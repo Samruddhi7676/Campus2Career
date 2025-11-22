@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JobPortal - Find Your Dream Job</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div id="auth-page" class="page active">
+        <div class="auth-wrapper">
+            <div class="auth-container">
+                <h1 style="text-align: center; color: #333; margin-bottom: 10px;">🚀 Job/Internship Portal</h1>
+                <h2 style="text-align: center; color: #667eea; margin-bottom: 30px;">Your Career Starts Here</h2>
+
+                <div class="tabs">
+                    <button class="tab active" onclick="showLogin()">Login</button>
+                    <button class="tab" onclick="showSignup()">Sign Up</button>
+                </div>
+
+                <div id="login-form" class="form-container">
+                    <input type="email" id="login-email" placeholder="Email Address">
+                    <input type="password" id="login-password" placeholder="Password">
+                    <button onclick="login()">🔐 Login</button>
+                    <div id="login-message"></div>
+                </div>
+
+                <div id="signup-form" class="form-container hidden">
+                    <input type="text" id="signup-name" placeholder="Full Name">
+                    <input type="email" id="signup-email" placeholder="Email Address">
+                    <input type="password" id="signup-password" placeholder="Password">
+                    <select id="signup-role">
+                        <option value="">Select Role</option>
+                        <option value="jobseeker">Job Seeker</option>
+                        <option value="employer">Employer</option>
+                    </select>
+                    <button onclick="signup()">📄 Create Account</button>
+                    <div id="signup-message"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="dashboard-page" class="page">
+        <div class="dashboard-wrapper">
+            <div class="sidebar">
+                <div class="sidebar-header">
+                    <h2>🚀 Job/Internship Portal</h2>
+                </div>
+
+                <div class="user-profile" onclick="showSection('profile')">
+                    <div class="user-avatar" id="sidebar-avatar">J</div>
+                    <div class="user-info">
+                        <h4 id="sidebar-name">User Name</h4>
+                        <p id="sidebar-role">Role</p>
+                    </div>
+                </div>
+
+                <ul class="nav-menu">
+                    <li class="nav-item active" onclick="showSection('home')">
+                        <span>🏠</span>
+                        <span>Home</span>
+                    </li>
+                    <li class="nav-item" onclick="showSection('jobs')" id="nav-jobs">
+                        <span>💼</span>
+                        <span>Find Jobs</span>
+                    </li>
+                    <li class="nav-item" onclick="showSection('resume')" id="nav-resume">
+                        <span>📄</span>
+                        <span>Resume Review</span>
+                    </li>
+                    <li class="nav-item" onclick="showSection('post-job')" id="nav-post-job" style="display: none;">
+                        <span>📢</span>
+                        <span>Post Job</span>
+                    </li>
+                    <li class="nav-item" onclick="showSection('my-jobs')" id="nav-my-jobs" style="display: none;">
+                        <span>📋</span>
+                        <span>My Jobs</span>
+                    </li>
+                    <li class="nav-item" onclick="showSection('notifications')">
+                        <span>🔔</span>
+                        <span>Notifications</span>
+                    </li>
+                    <li class="nav-item" onclick="showSection('profile')">
+                        <span>⚙️</span>
+                        <span>Settings</span>
+                    </li>
+                </ul>
+            </div>
+
+            <div class="main-content">
+                <div id="home-section" class="content-section active">
+                    <div class="top-bar">
+                        <h1>👋 Welcome back, <span id="home-user-name">User</span>!</h1>
+                        <button class="btn-logout" onclick="window.logout()">Logout</button>
+                    </div>
+
+                    <div class="stats-grid">
+                        <div class="stat-card">
+                            <h3 id="total-jobs">0</h3>
+                            <p>Total Jobs Available</p>
+                        </div>
+                        <div class="stat-card">
+                            <h3 id="new-jobs">0</h3>
+                            <p>New This Week</p>
+                        </div>
+                        <div class="stat-card">
+                            <h3 id="total-notifications">0</h3>
+                            <p>Notifications</p>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <h2>🔥 Latest Job Openings</h2>
+                        <div id="home-jobs-list"></div>
+                    </div>
+
+                    <div class="card">
+                        <h2>🔔 Recent Notifications</h2>
+                        <div id="home-notifications-list"></div>
+                    </div>
+                </div>
+
+                <div id="jobs-section" class="content-section">
+                    <div class="top-bar">
+                        <h1>💼 Find Your Dream Job</h1>
+                        <button class="btn-logout" onclick="window.logout()">Logout</button>
+                    </div>
+
+                    <div class="card">
+                        <div class="search-box">
+                            <input type="text" id="search-input" placeholder="Search by title, company, or location...">
+                            <button onclick="searchJobs()">🔍 Search</button>
+                        </div>
+                        <div id="jobs-list"></div>
+                    </div>
+                </div>
+
+                <div id="resume-section" class="content-section">
+                    <div class="top-bar">
+                        <h1>📄 AI Resume Reviewer</h1>
+                        <button class="btn-logout" onclick="window.logout()">Logout</button>
+                    </div>
+
+                    <div class="card">
+                        <h3>Step 1: Select Job Role</h3>
+                        <p style="color: #666; margin-bottom: 15px;">Choose the job role you're applying for</p>
+
+                        <select id="job-role-select" style="margin-bottom: 20px;">
+                            <option value="">-- Select Job Role --</option>
+                            <option value="software-developer">Software Developer / Engineer</option>
+                            <option value="data-scientist">Data Scientist / Analyst</option>
+                            <option value="web-developer">Web Developer</option>
+                            <option value="mobile-developer">Mobile Developer</option>
+                            <option value="devops-engineer">DevOps Engineer</option>
+                            <option value="ui-ux-designer">UI/UX Designer</option>
+                            <option value="product-manager">Product Manager</option>
+                            <option value="business-analyst">Business Analyst</option>
+                            <option value="project-manager">Project Manager</option>
+                            <option value="qa-tester">QA Tester</option>
+                            <option value="cybersecurity">Cybersecurity</option>
+                            <option value="database-admin">Database Admin</option>
+                            <option value="other">Other</option>
+                        </select>
+
+                        <h3 style="margin-top: 30px;">Step 2: Upload Your Resume</h3>
+                        <p style="color: #666; margin-bottom: 15px;">Accepted: PDF, DOC, DOCX, TXT</p>
+
+                        <input type="file" id="resume-file" accept=".pdf,.doc,.docx,.txt" style="border: 2px dashed #667eea; background: #f8f9fa; padding: 20px; text-align: center;">
+
+                        <button onclick="reviewResume()" style="margin-top: 20px;">🔍 Review My Resume</button>
+                        <button onclick="openResumeReviewer()" style="background:#667eea;color:white;">Resume Reviewer</button>
+
+                        <div id="resume-result"></div>
+                    </div>
+                </div>
+
+                <div id="post-job-section" class="content-section">
+                    <div class="top-bar">
+                        <h1>📢 Post a New Job</h1>
+                        <button class="btn-logout" onclick="window.logout()">Logout</button>
+                    </div>
+
+                    <div class="card">
+                        <input type="text" id="job-title" placeholder="Job Title">
+                        <input type="text" id="job-company" placeholder="Company Name">
+                        <input type="text" id="job-location" placeholder="Location">
+                        <input type="text" id="job-salary" placeholder="Salary Range">
+                        <textarea id="job-description" rows="6" placeholder="Job Description..."></textarea>
+                        <button type="button" onclick="postJob()">✅ Post Job</button>
+                        <div id="post-job-message" style="color:red; margin-top:10px;"></div>
+                    </div>
+                </div>
+
+                <div id="my-jobs-section" class="content-section">
+                    <div class="top-bar">
+                        <h1>📋 Your Posted Jobs</h1>
+                        <button class="btn-logout" onclick="window.logout()">Logout</button>
+                    </div>
+
+                    <div class="card">
+                        <div id="my-jobs-list"></div>
+                    </div>
+                </div>
+
+                <div id="notifications-section" class="content-section">
+                    <div class="top-bar">
+                        <h1>🔔 All Notifications</h1>
+                        <button class="btn-logout" onclick="window.logout()">Logout</button>
+                    </div>
+
+                    <div class="card">
+                        <div id="notifications-list"></div>
+                    </div>
+                </div>
+
+                <div id="profile-section" class="content-section">
+                    <div class="top-bar">
+                        <h1>⚙️ Profile & Settings</h1>
+                        <button class="btn-logout" onclick="window.logout()">Logout</button>
+                    </div>
+
+                    <div class="profile-section">
+                        <div class="profile-header">
+                            <div class="profile-avatar" id="profile-avatar">J</div>
+                            <div class="profile-details">
+                                <h2 id="profile-name">User Name</h2>
+                                <p id="profile-email">user@example.com</p>
+                                <p id="profile-role-text">Role</p>
+                            </div>
+                        </div>
+
+                        <h3>Account Information</h3>
+                        <div class="form-group">
+                            <label>Full Name</label>
+                            <input type="text" id="profile-name-input" readonly>
+                        </div>
+                        <div class="form-group">
+                            <label>Email Address</label>
+                            <input type="email" id="profile-email-input" readonly>
+                        </div>
+                        <div class="form-group">
+                            <label>Account Type</label>
+                            <input type="text" id="profile-role-input" readonly>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
