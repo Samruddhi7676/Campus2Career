@@ -10,8 +10,12 @@
     <div id="auth-page" class="page active">
         <div class="auth-wrapper">
             <div class="auth-container">
-                <h1 style="text-align: center; color: #333; margin-bottom: 10px;">🚀 Job/Internship Portal</h1>
-                <h2 style="text-align: center; color: #667eea; margin-bottom: 30px;">Your Career Starts Here</h2>
+
+                
+                <div class="logo-container">
+    <img src="images/C2C.jpeg" class="logo-img" alt="C2C Logo">
+</div>
+
 
                 <div class="tabs">
                     <button class="tab active" onclick="showLogin()">Login</button>
@@ -42,10 +46,12 @@
     </div>
 
     <div id="dashboard-page" class="page">
-        <div class="dashboard-wrapper">
-            <div class="sidebar">
-                <div class="sidebar-header">
-                    <h2>🚀 Job/Internship Portal</h2>
+    <div class="dashboard-wrapper">
+        <div class="sidebar">
+            <div class="sidebar-header">
+                <div class="logo-container">
+                    <img src="images/C2C.jpeg" alt="Logo" class="logo-img">
+                    <span class="logo-text dashboard-logo">Campus2Career</span>
                 </div>
 
                 <div class="user-profile" onclick="showSection('profile')">
@@ -87,93 +93,96 @@
                     </li>
                 </ul>
             </div>
+        </div>
 
-            <div class="main-content">
-                <div id="home-section" class="content-section active">
-                    <div class="top-bar">
-                        <h1>👋 Welcome back, <span id="home-user-name">User</span>!</h1>
-                        <button class="btn-logout" onclick="window.logout()">Logout</button>
+        <div class="main-content">
+            <div id="home-section" class="content-section active">
+                <div class="top-bar">
+                    <h1>👋‹ Welcome back, <span id="home-user-name">User</span>!</h1>
+                    <button class="btn-logout" onclick="window.logout()">Logout</button>
+                </div>
+
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <h3 id="total-jobs">0</h3>
+                        <p>Total Jobs Available</p>
                     </div>
-
-                    <div class="stats-grid">
-                        <div class="stat-card">
-                            <h3 id="total-jobs">0</h3>
-                            <p>Total Jobs Available</p>
-                        </div>
-                        <div class="stat-card">
-                            <h3 id="new-jobs">0</h3>
-                            <p>New This Week</p>
-                        </div>
-                        <div class="stat-card">
-                            <h3 id="total-notifications">0</h3>
-                            <p>Notifications</p>
-                        </div>
+                    <div class="stat-card">
+                        <h3 id="new-jobs">0</h3>
+                        <p>New This Week</p>
                     </div>
-
-                    <div class="card">
-                        <h2>🔥 Latest Job Openings</h2>
-                        <div id="home-jobs-list"></div>
-                    </div>
-
-                    <div class="card">
-                        <h2>🔔 Recent Notifications</h2>
-                        <div id="home-notifications-list"></div>
+                    <div class="stat-card">
+                        <h3 id="total-notifications">0</h3>
+                        <p>Notifications</p>
                     </div>
                 </div>
 
-                <div id="jobs-section" class="content-section">
-                    <div class="top-bar">
-                        <h1>💼 Find Your Dream Job</h1>
-                        <button class="btn-logout" onclick="window.logout()">Logout</button>
-                    </div>
-
-                    <div class="card">
-                        <div class="search-box">
-                            <input type="text" id="search-input" placeholder="Search by title, company, or location...">
-                            <button onclick="searchJobs()">🔍 Search</button>
-                        </div>
-                        <div id="jobs-list"></div>
-                    </div>
+                <div class="card">
+                    <h2>🔥 Latest Job Openings</h2>
+                    <div id="home-jobs-list"></div>
                 </div>
 
-                <div id="resume-section" class="content-section">
-                    <div class="top-bar">
-                        <h1>📄 AI Resume Reviewer</h1>
-                        <button class="btn-logout" onclick="window.logout()">Logout</button>
-                    </div>
-
-                    <div class="card">
-                        <h3>Step 1: Select Job Role</h3>
-                        <p style="color: #666; margin-bottom: 15px;">Choose the job role you're applying for</p>
-
-                        <select id="job-role-select" style="margin-bottom: 20px;">
-                            <option value="">-- Select Job Role --</option>
-                            <option value="software-developer">Software Developer / Engineer</option>
-                            <option value="data-scientist">Data Scientist / Analyst</option>
-                            <option value="web-developer">Web Developer</option>
-                            <option value="mobile-developer">Mobile Developer</option>
-                            <option value="devops-engineer">DevOps Engineer</option>
-                            <option value="ui-ux-designer">UI/UX Designer</option>
-                            <option value="product-manager">Product Manager</option>
-                            <option value="business-analyst">Business Analyst</option>
-                            <option value="project-manager">Project Manager</option>
-                            <option value="qa-tester">QA Tester</option>
-                            <option value="cybersecurity">Cybersecurity</option>
-                            <option value="database-admin">Database Admin</option>
-                            <option value="other">Other</option>
-                        </select>
-
-                        <h3 style="margin-top: 30px;">Step 2: Upload Your Resume</h3>
-                        <p style="color: #666; margin-bottom: 15px;">Accepted: PDF, DOC, DOCX, TXT</p>
-
-                        <input type="file" id="resume-file" accept=".pdf,.doc,.docx,.txt" style="border: 2px dashed #667eea; background: #f8f9fa; padding: 20px; text-align: center;">
-
-                        <button onclick="reviewResume()" style="margin-top: 20px;">🔍 Review My Resume</button>
-                        <button onclick="openResumeReviewer()" style="background:#667eea;color:white;">Resume Reviewer</button>
-
-                        <div id="resume-result"></div>
-                    </div>
+                <div class="card">
+                    <h2>🔔 Recent Notifications</h2>
+                    <div id="home-notifications-list"></div>
                 </div>
+            </div>
+
+            <!-- Jobs Section -->
+            <div id="jobs-section" class="content-section">
+                <div class="top-bar">
+                    <h1>💼 Find Your Dream Job</h1>
+                    <button class="btn-logout" onclick="window.logout()">Logout</button>
+                </div>
+
+                <div class="card">
+                    <div class="search-box">
+                        <input type="text" id="search-input" placeholder="Search by title, company, or location...">
+                        <button onclick="searchJobs()">🔍Search</button>
+                    </div>
+                    <div id="jobs-list"></div>
+                </div>
+            </div>
+
+            <!-- Resume Section -->
+            <div id="resume-section" class="content-section">
+                <div class="top-bar">
+                    <h1>📄 AI Resume Reviewer</h1>
+                    <button class="btn-logout" onclick="window.logout()">Logout</button>
+                </div>
+
+                <div class="card">
+                    <h3>Step 1: Select Job Role</h3>
+                    <p style="color: #666; margin-bottom: 15px;">Choose the job role you're applying for</p>
+
+                    <select id="job-role-select" style="margin-bottom: 20px;">
+                        <option value="">-- Select Job Role --</option>
+                        <option value="software-developer">Software Developer / Engineer</option>
+                        <option value="data-scientist">Data Scientist / Analyst</option>
+                        <option value="web-developer">Web Developer</option>
+                        <option value="mobile-developer">Mobile Developer</option>
+                        <option value="devops-engineer">DevOps Engineer</option>
+                        <option value="ui-ux-designer">UI/UX Designer</option>
+                        <option value="product-manager">Product Manager</option>
+                        <option value="business-analyst">Business Analyst</option>
+                        <option value="project-manager">Project Manager</option>
+                        <option value="qa-tester">QA Tester</option>
+                        <option value="cybersecurity">Cybersecurity</option>
+                        <option value="database-admin">Database Admin</option>
+                        <option value="other">Other</option>
+                    </select>
+
+                    <h3 style="margin-top: 30px;">Step 2: Upload Your Resume</h3>
+                    <p style="color: #666; margin-bottom: 15px;">Accepted: PDF, DOC, DOCX, TXT</p>
+
+                    <input type="file" id="resume-file" accept=".pdf,.doc,.docx,.txt" style="border: 2px dashed #667eea; background: #f8f9fa; padding: 20px; text-align: center;">
+
+                    <button onclick="reviewResume()" style="margin-top: 20px;">🔍 Review My Resume</button>
+
+                    <div id="resume-result"></div>
+                </div>
+            </div>
+
 
                 <div id="post-job-section" class="content-section">
                     <div class="top-bar">
@@ -186,6 +195,7 @@
                         <input type="text" id="job-company" placeholder="Company Name">
                         <input type="text" id="job-location" placeholder="Location">
                         <input type="text" id="job-salary" placeholder="Salary Range">
+                        <input type="email" id="job-company-email" placeholder="Company Email (for applicant contact)">
                         <textarea id="job-description" rows="6" placeholder="Job Description..."></textarea>
                         <button type="button" onclick="postJob()">✅ Post Job</button>
                         <div id="post-job-message" style="color:red; margin-top:10px;"></div>
@@ -194,7 +204,7 @@
 
                 <div id="my-jobs-section" class="content-section">
                     <div class="top-bar">
-                        <h1>📋 Your Posted Jobs</h1>
+                        <h1>📋Your Posted Jobs</h1>
                         <button class="btn-logout" onclick="window.logout()">Logout</button>
                     </div>
 
@@ -205,7 +215,7 @@
 
                 <div id="notifications-section" class="content-section">
                     <div class="top-bar">
-                        <h1>🔔 All Notifications</h1>
+                        <h1>🔔All Notifications</h1>
                         <button class="btn-logout" onclick="window.logout()">Logout</button>
                     </div>
 

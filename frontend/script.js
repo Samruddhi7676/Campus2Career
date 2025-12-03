@@ -6,6 +6,136 @@ let currentUser = null;
 console.log('Script loaded successfully');
 
 // ========================================
+// CUSTOM MODAL SYSTEM
+// ========================================
+
+// Custom Alert Modal
+function showCustomAlert(message, type = 'info') {
+    const existingModal = document.getElementById('custom-alert-modal');
+    if (existingModal) existingModal.remove();
+    
+    const modal = document.createElement('div');
+    modal.id = 'custom-alert-modal';
+    modal.className = 'custom-modal-overlay';
+    
+    const iconMap = {
+        success: '✅',
+        error: '❌',
+        info: 'ℹ️',
+        warning: '⚠️'
+    };
+    
+    modal.innerHTML = `
+        <div class="custom-modal-content">
+            <div class="custom-modal-icon">${iconMap[type] || iconMap.info}</div>
+            <div class="custom-modal-message">${message}</div>
+            <div class="custom-modal-buttons">
+                <button class="custom-modal-btn custom-modal-btn-primary" onclick="closeCustomAlert()">OK</button>
+            </div>
+        </div>
+    `;
+    
+    document.body.appendChild(modal);
+    
+    // Close on clicking overlay
+    modal.addEventListener('click', function(e) {
+        if (e.target === modal) closeCustomAlert();
+    });
+}
+
+function closeCustomAlert() {
+    const modal = document.getElementById('custom-alert-modal');
+    if (modal) modal.remove();
+}
+
+// Custom Confirm Modal
+function showCustomConfirm(message, onConfirm, onCancel = null) {
+    const existingModal = document.getElementById('custom-confirm-modal');
+    if (existingModal) existingModal.remove();
+    
+    const modal = document.createElement('div');
+    modal.id = 'custom-confirm-modal';
+    modal.className = 'custom-modal-overlay';
+    
+    modal.innerHTML = `
+        <div class="custom-modal-content">
+            <div class="custom-modal-icon">❓</div>
+            <div class="custom-modal-message">${message}</div>
+            <div class="custom-modal-buttons">
+                <button class="custom-modal-btn custom-modal-btn-success" id="confirm-yes">Yes</button>
+                <button class="custom-modal-btn custom-modal-btn-secondary" id="confirm-no">No</button>
+            </div>
+        </div>
+    `;
+    
+    document.body.appendChild(modal);
+    
+    document.getElementById('confirm-yes').onclick = function() {
+        closeCustomConfirm();
+        if (onConfirm) onConfirm();
+    };
+    
+    document.getElementById('confirm-no').onclick = function() {
+        closeCustomConfirm();
+        if (onCancel) onCancel();
+    };
+    
+    // Close on clicking overlay
+    modal.addEventListener('click', function(e) {
+        if (e.target === modal) {
+            closeCustomConfirm();
+            if (onCancel) onCancel();
+        }
+    });
+}
+
+function closeCustomConfirm() {
+    const modal = document.getElementById('custom-confirm-modal');
+    if (modal) modal.remove();
+}
+
+// Custom Toast Notification (auto-dismiss)
+function showToast(message, type = 'success') {
+    const toast = document.createElement('div');
+    toast.className = `custom-toast custom-toast-${type}`;
+    
+    const iconMap = {
+        success: '✅',
+        error: '❌',
+        info: 'ℹ️'
+    };
+    
+    toast.innerHTML = `
+        <div class="custom-toast-icon">${iconMap[type] || iconMap.success}</div>
+        <div class="custom-toast-message">${message}</div>
+    `;
+    
+    document.body.appendChild(toast);
+    
+    setTimeout(() => {
+        toast.remove();
+    }, 3000);
+}
+
+// Override default alert and confirm (optional but recommended)
+window.customAlert = showCustomAlert;
+window.customConfirm = showCustomConfirm;
+window.customToast = showToast;
+
+// ========================================
+// CHECK FOR SAVED SESSION ON PAGE LOAD
+// ========================================
+window.addEventListener('DOMContentLoaded', function() {
+    const savedUser = localStorage.getItem('currentUser');
+    if (savedUser) {
+        currentUser = JSON.parse(savedUser);
+        showDashboard();
+        // Always show home page first
+        showSection('home');
+    }
+});
+
+// ========================================
 // AUTH FUNCTIONS
 // ========================================
 function showLogin() {
@@ -49,7 +179,11 @@ async function signup() {
             msgDiv.innerHTML = 'Account created! Logging you in...';
             setTimeout(() => {
                 currentUser = { name, email, role };
+                // Save user to localStorage
+                localStorage.setItem('currentUser', JSON.stringify(currentUser));
                 showDashboard();
+                // Always show home page first
+                showSection('home');
             }, 1000);
         } else {
             msgDiv.innerHTML = data.error;
@@ -83,7 +217,11 @@ async function login() {
                 email: data.email,
                 role: data.role || 'jobseeker'
             };
+            // Save user to localStorage
+            localStorage.setItem('currentUser', JSON.stringify(currentUser));
             showDashboard();
+            // Always show home page first
+            showSection('home');
         } else {
             msgDiv.innerHTML = 'Invalid credentials!';
         }
@@ -94,28 +232,30 @@ async function login() {
 }
 
 function logout() {
-    if (window.confirm('Are you sure you want to logout?')) {
+    showCustomConfirm('Are you sure you want to logout?', function() {
         currentUser = null;
+        // Clear localStorage
+        localStorage.removeItem('currentUser');
         
-        // Clear all form fields
         document.getElementById('login-email').value = '';
         document.getElementById('login-password').value = '';
         document.getElementById('signup-name').value = '';
         document.getElementById('signup-email').value = '';
         document.getElementById('signup-password').value = '';
         document.getElementById('signup-role').value = '';
-        
-        // Clear messages
         document.getElementById('login-message').innerHTML = '';
         document.getElementById('signup-message').innerHTML = '';
-        
-        // Switch pages
         document.getElementById('dashboard-page').classList.remove('active');
         document.getElementById('auth-page').classList.add('active');
         
-        // Show login form
+        // Remove mobile menu elements
+        const mobileToggle = document.querySelector('.mobile-menu-toggle');
+        const overlay = document.querySelector('.sidebar-overlay');
+        if (mobileToggle) mobileToggle.remove();
+        if (overlay) overlay.remove();
+        
         showLogin();
-    }
+    });
 }
 
 // ========================================
@@ -124,7 +264,6 @@ function logout() {
 function showDashboard() {
     document.getElementById('auth-page').classList.remove('active');
     document.getElementById('dashboard-page').classList.add('active');
-
     document.getElementById('sidebar-avatar').textContent = currentUser.name.charAt(0).toUpperCase();
     document.getElementById('sidebar-name').textContent = currentUser.name;
     document.getElementById('sidebar-role').textContent = currentUser.role === 'jobseeker' ? 'Job Seeker' : 'Employer';
@@ -142,6 +281,16 @@ function showDashboard() {
         document.getElementById('nav-my-jobs').style.display = 'none';
     }
 
+    // Create mobile menu toggle
+    createMobileMenuToggle();
+    
+    // Show logout button only on home page by default
+    const logoutButtons = document.querySelectorAll('.btn-logout');
+    logoutButtons.forEach(btn => {
+        btn.style.display = 'inline-block';
+    });
+    
+    // Always load home page first
     loadHomePage();
     loadProfileData();
 }
@@ -167,7 +316,16 @@ function showSection(section) {
         }
     });
 
-    // Clear resume review results and form when leaving resume section
+    // Show/Hide ALL logout buttons based on section
+    const logoutButtons = document.querySelectorAll('.btn-logout');
+    logoutButtons.forEach(btn => {
+        if (section === 'home' || section === 'profile') {
+            btn.style.display = 'inline-block';
+        } else {
+            btn.style.display = 'none';
+        }
+    });
+
     if (section !== 'resume') {
         const resumeResult = document.getElementById('resume-result');
         const resumeFile = document.getElementById('resume-file');
@@ -182,6 +340,11 @@ function showSection(section) {
     if (section === 'notifications') loadNotifications();
     if (section === 'my-jobs') loadEmployerJobs();
     if (section === 'profile') loadProfileData();
+    
+    // Close mobile menu when section changes (on mobile)
+    if (window.innerWidth <= 768) {
+        closeMobileMenu();
+    }
 }
 
 // ========================================
@@ -205,18 +368,30 @@ async function loadHomePage() {
             homeJobsList.appendChild(div);
         });
 
-        const notifications = await (await fetch(`${API_URL}/notifications`)).json();
-        const filtered = currentUser.role === 'employer'
-            ? notifications.filter(n => n.message.includes('applied'))
-            : notifications.filter(n => n.message.includes('New job posted'));
-
-        document.getElementById('total-notifications').textContent = filtered.length;
+        const notifications = await (await fetch(`${API_URL}/notifications?email=${currentUser.email}`)).json();
+        document.getElementById('total-notifications').textContent = notifications.length;
 
         const notifList = document.getElementById('home-notifications-list');
         notifList.innerHTML = '';
-        filtered.slice(0, 5).forEach(notif => {
+
+        let homeNotifications;
+        if (currentUser.role === 'jobseeker') {
+            homeNotifications = notifications.filter(n => 
+                ['selection', 'new_job'].includes(n.type)
+             );
+        } else {
+            homeNotifications = notifications.filter(n => 
+                ['applied'].includes(n.type)
+            );
+        }
+
+        homeNotifications.slice(0, 5).forEach(notif => {
             const div = document.createElement('div');
             div.className = 'notification';
+            if (notif.type === 'selection') div.classList.add('selection-notification');
+            if (notif.type === 'rejection') div.style.background = '#f8d7da';
+            if (notif.type === 'new_applicant') div.style.background = '#d1ecf1';
+            if (notif.type === 'applied') div.style.background = '#d1ecf1';
             div.innerHTML = '<p>' + notif.message + '</p><small>' + notif.created_at + '</small>';
             notifList.appendChild(div);
         });
@@ -360,7 +535,7 @@ async function submitApplication(jobId, jobTitle, company) {
             msgDiv.innerHTML = '<p style="color:green;">Submitted!</p>'; 
             setTimeout(function() {
                 closeApplyModal(); 
-                alert('Application submitted successfully!');
+                showToast('Application submitted successfully!', 'success');
             }, 1500); 
         } else {
             msgDiv.innerHTML = '<p style="color:red;">' + data.error + '</p>';
@@ -379,12 +554,20 @@ async function postJob() {
     const company = document.getElementById('job-company').value.trim();
     const location = document.getElementById('job-location').value.trim();
     const salary = document.getElementById('job-salary').value.trim();
+    const companyEmail = document.getElementById('job-company-email').value.trim();
     const description = document.getElementById('job-description').value.trim();
     const msgDiv = document.getElementById('post-job-message');
     
-    if(!title || !company || !location || !salary || !description) { 
+    if(!title || !company || !location || !salary || !companyEmail || !description) { 
         msgDiv.innerHTML = 'Fill all fields!'; 
         msgDiv.style.color = 'red'; 
+        return;
+    }
+    
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(companyEmail)) {
+        msgDiv.innerHTML = 'Please enter a valid company email!';
+        msgDiv.style.color = 'red';
         return;
     }
     
@@ -394,6 +577,7 @@ async function postJob() {
             headers:{'Content-Type':'application/json'}, 
             body:JSON.stringify({
                 title, company, location, salary, description,
+                company_email: companyEmail,
                 employer_email: currentUser.email
             })
         });
@@ -405,6 +589,7 @@ async function postJob() {
             document.getElementById('job-company').value = '';
             document.getElementById('job-location').value = '';
             document.getElementById('job-salary').value = '';
+            document.getElementById('job-company-email').value = '';
             document.getElementById('job-description').value = '';
             loadEmployerJobs();
             loadHomePage();
@@ -421,71 +606,24 @@ async function postJob() {
 }
 
 // ========================================
-// LOAD EMPLOYER JOBS
-// ========================================
-async function loadEmployerJobs() {
-    const container = document.getElementById('my-jobs-list'); 
-    container.innerHTML = 'Loading...';
-    
-    try {
-        const jobs = await (await fetch(`${API_URL}/my-jobs?email=${currentUser.email}`)).json();
-        if(!jobs || jobs.length === 0) { 
-            container.innerHTML = '<p class="empty-state">No jobs posted yet</p>'; 
-            return;
-        }
-        
-        container.innerHTML = '';
-        jobs.forEach(job => {
-            const div = document.createElement('div');
-            div.className = 'job-card';
-            div.innerHTML = '<h4>' + job.title + '</h4>' +
-                '<p><strong>Company:</strong> ' + job.company + '</p>' +
-                '<p><strong>Location:</strong> ' + job.location + '</p>' +
-                '<p><strong>Salary:</strong> ' + job.salary + '</p>' +
-                '<p><strong>Description:</strong> ' + job.description + '</p>';
-            
-            const btnContainer = document.createElement('div');
-            btnContainer.style.cssText = 'display:flex;gap:10px;margin-top:10px;';
-            
-            const viewBtn = document.createElement('button');
-            viewBtn.textContent = 'View Applicants';
-            viewBtn.style.cssText = 'background:#667eea;color:white;border:none;padding:10px 20px;border-radius:6px;cursor:pointer;';
-            viewBtn.onclick = function() { viewApplicants(job._id); };
-            btnContainer.appendChild(viewBtn);
-            
-            const delBtn = document.createElement('button');
-            delBtn.textContent = 'Delete Job';
-            delBtn.style.cssText = 'background:#e74c3c;color:white;border:none;padding:10px 20px;border-radius:6px;cursor:pointer;';
-            delBtn.onclick = function() { deleteJob(job._id); };
-            btnContainer.appendChild(delBtn);
-            
-            div.appendChild(btnContainer);
-            container.appendChild(div);
-        });
-    } catch(e) {
-        container.innerHTML = '<p style="color:red;">Error loading jobs</p>'; 
-        console.error(e);
-    }
-}
-
-// ========================================
 // DELETE JOB
 // ========================================
 async function deleteJob(jobId) {
-    if(!confirm('Delete this job?')) return;
-    try {
-        const res = await fetch(`${API_URL}/delete-job?job_id=${jobId}`, {method:'DELETE'});
-        if(res.ok) { 
-            alert('Deleted!'); 
-            loadEmployerJobs(); 
-            loadHomePage();
-        } else { 
-            alert('Could not delete'); 
+    showCustomConfirm('Are you sure you want to delete this job?', async function() {
+        try {
+            const res = await fetch(`${API_URL}/delete-job?job_id=${jobId}`, {method:'DELETE'});
+            if(res.ok) { 
+                showToast('Job deleted successfully!', 'success');
+                loadEmployerJobs(); 
+                loadHomePage();
+            } else { 
+                showCustomAlert('Could not delete job', 'error');
+            }
+        } catch(e) { 
+            showCustomAlert('Server error occurred', 'error');
+            console.error(e);
         }
-    } catch(e) { 
-        alert('Server error'); 
-        console.error(e);
-    }
+    });
 }
 
 // ========================================
@@ -497,7 +635,7 @@ async function viewApplicants(jobId) {
     modal.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.7);display:flex;align-items:center;justify-content:center;z-index:10000;';
     
     const content = document.createElement('div');
-    content.style.cssText = 'background:white;padding:30px;border-radius:12px;width:90%;max-width:600px;max-height:80%;overflow-y:auto;';
+    content.style.cssText = 'background:white;padding:30px;border-radius:12px;width:90%;max-width:700px;max-height:80%;overflow-y:auto;';
     
     const title = document.createElement('h3');
     title.style.marginBottom = '20px';
@@ -529,15 +667,33 @@ async function viewApplicants(jobId) {
         apps.forEach(app => {
             const div = document.createElement('div'); 
             div.style.cssText = 'border:1px solid #ddd;padding:15px;margin-bottom:10px;border-radius:6px;background:#f9f9f9;';
-            div.innerHTML = '<p style="margin-bottom:5px;"><strong>Name:</strong> ' + app.applicant_name + '</p>' +
+            
+            let statusBadge = '';
+            if (app.status === 'selected') {
+                statusBadge = '<span style="background:#28a745;color:white;padding:4px 10px;border-radius:4px;font-size:0.85em;margin-left:10px;">✓ Selected</span>';
+            }
+            
+            div.innerHTML = '<p style="margin-bottom:5px;"><strong>Name:</strong> ' + app.applicant_name + statusBadge + '</p>' +
                 '<p style="margin-bottom:10px;"><strong>Email:</strong> ' + app.applicant_email + '</p>';
+            
+            const btnContainer = document.createElement('div');
+            btnContainer.style.cssText = 'display:flex;gap:10px;margin-top:10px;';
             
             const viewResumeBtn = document.createElement('button');
             viewResumeBtn.textContent = 'View Resume';
             viewResumeBtn.style.cssText = 'background:#667eea;color:white;padding:8px 15px;border:none;border-radius:4px;cursor:pointer;';
             viewResumeBtn.onclick = function() { viewResume(app.resume_url); };
-            div.appendChild(viewResumeBtn);
+            btnContainer.appendChild(viewResumeBtn);
             
+            if (app.status !== 'selected') {
+                const selectBtn = document.createElement('button');
+                selectBtn.textContent = 'Select Applicant';
+                selectBtn.style.cssText = 'background:#28a745;color:white;padding:8px 15px;border:none;border-radius:4px;cursor:pointer;';
+                selectBtn.onclick = function() { selectApplicant(app._id, app.applicant_name); };
+                btnContainer.appendChild(selectBtn);
+            }
+            
+            div.appendChild(btnContainer);
             listDiv.appendChild(div);
         });
     } catch(e) {
@@ -553,10 +709,37 @@ function closeApplicantsModal() {
 
 function viewResume(url) { 
     if(!url) { 
-        alert('Resume not available'); 
+        showCustomAlert('Resume not available', 'warning');
         return;
     } 
     window.open(url, '_blank'); 
+}
+
+// ========================================
+// SELECT APPLICANT 
+// ========================================
+async function selectApplicant(applicationId, applicantName) {
+    showCustomConfirm(`Select ${applicantName} for this position?`, async function() {
+        try {
+            const res = await fetch(`${API_URL}/select-applicant`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ application_id: applicationId })
+            });
+            
+            const data = await res.json();
+            
+            if (res.ok) {
+                showToast(`${applicantName} has been selected! They will receive a notification.`, 'success');
+                closeApplicantsModal();
+            } else {
+                showCustomAlert('Error: ' + data.error, 'error');
+            }
+        } catch (e) {
+            showCustomAlert('Server error occurred', 'error');
+            console.error(e);
+        }
+    });
 }
 
 // ========================================
@@ -567,20 +750,37 @@ async function loadNotifications() {
     container.innerHTML = 'Loading...';
     
     try {
-        const notifications = await (await fetch(`${API_URL}/notifications`)).json();
-        const filtered = currentUser.role === 'employer'
-            ? notifications.filter(n => n.message.includes('applied'))
-            : notifications.filter(n => n.message.includes('New job posted'));
-        
-        if(!filtered || filtered.length === 0) { 
+        const notifications = await (await fetch(`${API_URL}/notifications?email=${currentUser.email}`)).json();
+        if(!notifications || notifications.length === 0) { 
             container.innerHTML = '<p class="empty-state">No notifications yet</p>'; 
             return;
         }
-        
+
+        let filteredNotifications;
+        if (currentUser.role === 'jobseeker') {
+            filteredNotifications = notifications.filter(n => 
+                ['selection', 'new_job'].includes(n.type)
+            );
+        } else {
+            filteredNotifications = notifications.filter(n => 
+                ['applied'].includes(n.type)
+            );
+        }
+
+        if(filteredNotifications.length === 0) {
+            container.innerHTML = '<p class="empty-state">No notifications for your role</p>';
+            return;
+        }
+
         container.innerHTML = '';
-        filtered.forEach(notif => {
+        filteredNotifications.forEach(notif => {
             const div = document.createElement('div');
             div.className = 'notification';
+            if (notif.type === 'selection') div.classList.add('selection-notification');
+            if (notif.type === 'rejection') div.style.background = '#f8d7da';
+            if (notif.type === 'new_applicant') div.style.background = '#d1ecf1';
+            if (notif.type === 'applied') div.style.background = '#d1ecf1';
+            if (notif.type === 'new_job') div.style.background = '#fff3cd';
             div.innerHTML = '<p>' + notif.message + '</p><small>' + notif.created_at + '</small>';
             container.appendChild(div);
         });
@@ -589,6 +789,152 @@ async function loadNotifications() {
         console.error(e);
     }
 }
+
+// ========================================
+// DELETE NOTIFICATION
+// ========================================
+async function deleteNotification(notificationId) {
+    showCustomConfirm('Delete this notification?', async function() {
+        try {
+            const res = await fetch(`${API_URL}/delete-notification?notification_id=${notificationId}`, {
+                method: 'DELETE'
+            });
+            
+            if(res.ok) {
+                showToast('Notification deleted', 'success');
+                loadNotifications();
+                loadHomePage();
+            } else {
+                showCustomAlert('Could not delete notification', 'error');
+            }
+        } catch(e) {
+            showCustomAlert('Server error occurred', 'error');
+            console.error(e);
+        }
+    });
+}
+
+// Update the loadNotifications function to include delete buttons
+async function loadNotifications() {
+    const container = document.getElementById('notifications-list');
+    container.innerHTML = 'Loading...';
+    
+    try {
+        const notifications = await (await fetch(`${API_URL}/notifications?email=${currentUser.email}`)).json();
+        if(!notifications || notifications.length === 0) { 
+            container.innerHTML = '<p class="empty-state">No notifications yet</p>'; 
+            return;
+        }
+
+        let filteredNotifications;
+        if (currentUser.role === 'jobseeker') {
+            filteredNotifications = notifications.filter(n => 
+                ['selection', 'new_job'].includes(n.type)
+            );
+        } else {
+            filteredNotifications = notifications.filter(n => 
+                ['applied'].includes(n.type)
+            );
+        }
+
+        if(filteredNotifications.length === 0) {
+            container.innerHTML = '<p class="empty-state">No notifications for your role</p>';
+            return;
+        }
+
+        container.innerHTML = '';
+        filteredNotifications.forEach(notif => {
+            const div = document.createElement('div');
+            div.className = 'notification';
+            div.style.position = 'relative';
+            div.style.paddingRight = '40px';
+            
+            if (notif.type === 'selection') div.classList.add('selection-notification');
+            if (notif.type === 'rejection') div.style.background = '#f8d7da';
+            if (notif.type === 'new_applicant') div.style.background = '#d1ecf1';
+            if (notif.type === 'applied') div.style.background = '#d1ecf1';
+            if (notif.type === 'new_job') div.style.background = '#fff3cd';
+            
+            div.innerHTML = '<p>' + notif.message + '</p><small>' + notif.created_at + '</small>';
+            
+            // Add delete button
+            const deleteBtn = document.createElement('button');
+            deleteBtn.innerHTML = '✕';
+            deleteBtn.className = 'notification-delete-btn';
+            deleteBtn.onclick = function() { deleteNotification(notif._id); };
+            div.appendChild(deleteBtn);
+            
+            container.appendChild(div);
+        });
+    } catch(e) { 
+        container.innerHTML = '<p style="color:red;">Error loading notifications</p>'; 
+        console.error(e);
+    }
+}
+
+// Update loadHomePage function to add delete buttons to home notifications
+async function loadHomePage() {
+    try {
+        const jobs = await (await fetch(`${API_URL}/search-jobs?search=`)).json();
+        document.getElementById('total-jobs').textContent = jobs.length;
+        document.getElementById('new-jobs').textContent = Math.min(jobs.length, 5);
+
+        const homeJobsList = document.getElementById('home-jobs-list');
+        homeJobsList.innerHTML = '';
+        jobs.slice(0, 5).forEach(job => {
+            const div = document.createElement('div');
+            div.className = 'job-card';
+            div.innerHTML = '<h4>' + job.title + '</h4>' +
+                '<p><strong>Company:</strong> ' + job.company + '</p>' +
+                '<p><strong>Location:</strong> ' + job.location + '</p>' +
+                '<p><strong>Salary:</strong> ' + job.salary + '</p>';
+            homeJobsList.appendChild(div);
+        });
+
+        const notifications = await (await fetch(`${API_URL}/notifications?email=${currentUser.email}`)).json();
+        document.getElementById('total-notifications').textContent = notifications.length;
+
+        const notifList = document.getElementById('home-notifications-list');
+        notifList.innerHTML = '';
+
+        let homeNotifications;
+        if (currentUser.role === 'jobseeker') {
+            homeNotifications = notifications.filter(n => 
+                ['selection', 'new_job'].includes(n.type)
+             );
+        } else {
+            homeNotifications = notifications.filter(n => 
+                ['applied'].includes(n.type)
+            );
+        }
+
+        homeNotifications.slice(0, 5).forEach(notif => {
+            const div = document.createElement('div');
+            div.className = 'notification';
+            div.style.position = 'relative';
+            div.style.paddingRight = '40px';
+            
+            if (notif.type === 'selection') div.classList.add('selection-notification');
+            if (notif.type === 'rejection') div.style.background = '#f8d7da';
+            if (notif.type === 'new_applicant') div.style.background = '#d1ecf1';
+            if (notif.type === 'applied') div.style.background = '#d1ecf1';
+            
+            div.innerHTML = '<p>' + notif.message + '</p><small>' + notif.created_at + '</small>';
+            
+            // Add delete button
+            const deleteBtn = document.createElement('button');
+            deleteBtn.innerHTML = '✕';
+            deleteBtn.className = 'notification-delete-btn';
+            deleteBtn.onclick = function() { deleteNotification(notif._id); };
+            div.appendChild(deleteBtn);
+            
+            notifList.appendChild(div);
+        });
+    } catch (err) { console.error(err); }
+}
+
+// Export the new function
+window.deleteNotification = deleteNotification;
 
 // ========================================
 // RESUME REVIEW
@@ -656,6 +1002,112 @@ function loadProfileData() {
     document.getElementById('profile-role-text').textContent = currentUser.role === 'jobseeker' ? 'Job Seeker' : 'Employer';
 }
 
+async function loadEmployerJobs() {
+    const container = document.getElementById('my-jobs-list');
+    if (!container) return;
+
+    container.innerHTML = 'Loading...';
+    try {
+        const jobs = await (await fetch(`${API_URL}/my-jobs?email=${currentUser.email}`)).json();
+        if (!jobs || jobs.length === 0) {
+            container.innerHTML = '<p class="empty-state">No jobs posted yet</p>';
+            return;
+        }
+
+        container.innerHTML = '';
+        jobs.forEach(job => {
+            const div = document.createElement('div');
+            div.className = 'job-card';
+            div.innerHTML = `<h4>${job.title}</h4>
+                             <p><strong>Company:</strong> ${job.company}</p>
+                             <p><strong>Location:</strong> ${job.location}</p>
+                             <p><strong>Salary:</strong> ${job.salary}</p>
+                             <p><strong>Description:</strong> ${job.description}</p>`;
+
+            const btnContainer = document.createElement('div');
+            btnContainer.style.cssText = 'display:flex;gap:10px;margin-top:10px;';
+
+            const viewApplicantsBtn = document.createElement('button');
+            viewApplicantsBtn.textContent = 'View Applicants';
+            viewApplicantsBtn.style.cssText = 'background:#667eea;color:white;padding:8px 15px;border:none;border-radius:4px;cursor:pointer;';
+            viewApplicantsBtn.onclick = () => viewApplicants(job._id);
+            btnContainer.appendChild(viewApplicantsBtn);
+
+            const deleteBtn = document.createElement('button');
+            deleteBtn.textContent = 'Delete';
+            deleteBtn.style.cssText = 'background:#e74c3c;color:white;padding:8px 15px;border:none;border-radius:4px;cursor:pointer;';
+            deleteBtn.onclick = () => deleteJob(job._id);
+            btnContainer.appendChild(deleteBtn);
+
+            div.appendChild(btnContainer);
+            container.appendChild(div);
+        });
+    } catch (err) {
+        container.innerHTML = '<p style="color:red;">Error loading jobs</p>';
+        console.error(err);
+    }
+}
+
+// ========================================
+// MOBILE MENU TOGGLE
+// ========================================
+
+// Create mobile menu toggle button
+function createMobileMenuToggle() {
+    // Check if button already exists
+    if (document.querySelector('.mobile-menu-toggle')) return;
+    
+    const toggleBtn = document.createElement('button');
+    toggleBtn.className = 'mobile-menu-toggle';
+    toggleBtn.innerHTML = '☰';
+    toggleBtn.onclick = toggleMobileMenu;
+    document.body.appendChild(toggleBtn);
+    
+    // Create overlay
+    const overlay = document.createElement('div');
+    overlay.className = 'sidebar-overlay';
+    overlay.onclick = closeMobileMenu;
+    document.body.appendChild(overlay);
+}
+
+function toggleMobileMenu() {
+    const sidebar = document.querySelector('.sidebar');
+    const overlay = document.querySelector('.sidebar-overlay');
+    const toggleBtn = document.querySelector('.mobile-menu-toggle');
+    
+    if (sidebar.classList.contains('mobile-active')) {
+        closeMobileMenu();
+    } else {
+        sidebar.classList.add('mobile-active');
+        overlay.classList.add('active');
+        toggleBtn.innerHTML = '✕';
+    }
+}
+
+function closeMobileMenu() {
+    const sidebar = document.querySelector('.sidebar');
+    const overlay = document.querySelector('.sidebar-overlay');
+    const toggleBtn = document.querySelector('.mobile-menu-toggle');
+    
+    sidebar.classList.remove('mobile-active');
+    overlay.classList.remove('active');
+    if (toggleBtn) toggleBtn.innerHTML = '☰';
+}
+
+// Handle window resize
+let resizeTimer;
+window.addEventListener('resize', function() {
+    clearTimeout(resizeTimer);
+    resizeTimer = setTimeout(function() {
+        if (window.innerWidth > 768) {
+            const sidebar = document.querySelector('.sidebar');
+            const overlay = document.querySelector('.sidebar-overlay');
+            if (sidebar) sidebar.classList.remove('mobile-active');
+            if (overlay) overlay.classList.remove('active');
+        }
+    }, 250);
+});
+
 // ========================================
 // EXPORT TO WINDOW
 // ========================================
@@ -675,5 +1127,9 @@ window.submitApplication = submitApplication;
 window.viewApplicants = viewApplicants;
 window.closeApplicantsModal = closeApplicantsModal;
 window.viewResume = viewResume;
+window.selectApplicant = selectApplicant;
+window.toggleMobileMenu = toggleMobileMenu;
+window.closeMobileMenu = closeMobileMenu;
+window.loadEmployerJobs = loadEmployerJobs;
 
-console.log('All functions loaded successfully!');
+console.log('All functions loaded successfully including mobile menu!');

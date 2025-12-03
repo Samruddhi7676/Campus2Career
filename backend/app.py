@@ -1,4 +1,4 @@
-# main.py - Fixed Backend
+# main.py - Backend
 from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
 from database import users_collection, jobs_collection, notifications_collection, applications_collection
@@ -23,9 +23,11 @@ app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 app.config['APPLICATIONS_FOLDER'] = APPLICATIONS_FOLDER
 app.config['MAX_CONTENT_LENGTH'] = 5 * 1024 * 1024
 
+
 # -------------------------
-# Serve Frontend
+# SERVE FRONTEND
 # -------------------------
+
 @app.route('/')
 def serve_frontend():
     return send_from_directory(app.static_folder, 'index.html')
@@ -34,15 +36,19 @@ def serve_frontend():
 def serve_static(path):
     return send_from_directory(app.static_folder, path)
 
+
 # -------------------------
-# SIGNUP / LOGIN
+# SIGNUP
 # -------------------------
+
 @app.route('/signup', methods=['POST'])
 def signup():
     try:
         data = request.json
+
         if users_collection.find_one({'email': data['email']}):
             return jsonify({'error': 'User already exists'}), 400
+
         new_user = {
             'name': data['name'],
             'email': data['email'],
@@ -50,16 +56,29 @@ def signup():
             'role': data['role'],
             'created_at': datetime.now()
         }
+
         users_collection.insert_one(new_user)
+
         return jsonify({'message': 'User registered successfully!'}), 201
+
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+
+
+# -------------------------
+# LOGIN
+# -------------------------
 
 @app.route('/login', methods=['POST'])
 def login():
     try:
         data = request.json
-        user = users_collection.find_one({'email': data['email'], 'password': data['password']})
+
+        user = users_collection.find_one({
+            'email': data['email'],
+            'password': data['password']
+        })
+
         if user:
             return jsonify({
                 'message': 'Login successful!',
@@ -67,130 +86,201 @@ def login():
                 'role': user['role'],
                 'email': user['email']
             }), 200
+
         return jsonify({'error': 'Invalid credentials'}), 401
+
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+
 
 # -------------------------
 # REVIEW RESUME
 # -------------------------
+
 @app.route('/review-resume', methods=['POST'])
 def review():
     try:
         if 'resume' not in request.files:
             return jsonify({'error': 'No file uploaded'}), 400
+
         file = request.files['resume']
         job_role = request.form.get('job_role', 'other')
+
         if file.filename == '':
             return jsonify({'error': 'No file selected'}), 400
+
         allowed_extensions = {'pdf', 'doc', 'docx', 'txt'}
-        file_ext = file.filename.rsplit('.', 1)[1].lower()
-        if file_ext not in allowed_extensions:
+        if '.' not in file.filename or file.filename.rsplit('.', 1)[1].lower() not in allowed_extensions:
             return jsonify({'error': 'Invalid file type'}), 400
-        filename = f"resume_{datetime.now().timestamp()}.{file_ext}"
+
+        filename = f"resume_{datetime.now().timestamp()}.{file.filename.rsplit('.', 1)[1].lower()}"
         filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+
         file.save(filepath)
+
         result = review_resume_file(filepath, job_role)
+
         os.remove(filepath)
+
         return jsonify(result), 200
+
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+
 
 # -------------------------
 # POST JOB
 # -------------------------
+
 @app.route('/post-job', methods=['POST'])
 def post_job():
     try:
         data = request.json
+
         new_job = {
             'title': data['title'],
             'company': data['company'],
             'location': data['location'],
             'salary': data['salary'],
             'description': data['description'],
+            'company_email': data.get('company_email', ''),
             'posted_by': data['employer_email'],
             'posted_at': datetime.now()
         }
+
         jobs_collection.insert_one(new_job)
-        notification = {
-            'message': f"New job posted: {data['title']} at {data['company']}",
-            'created_at': datetime.now()
-        }
-        notifications_collection.insert_one(notification)
+
+        # ✅ Send only to JOB SEEKERS
+        job_seekers = users_collection.find({'role': 'jobseeker'})
+
+        for seeker in job_seekers:
+            notification = {
+                'message': f"New job posted: {data['title']} at {data['company']}",
+                'recipient_email': seeker['email'],
+                'type': 'new_job',
+                'created_at': datetime.now()
+            }
+
+            notifications_collection.insert_one(notification)
+
         return jsonify({'message': 'Job posted successfully!'}), 201
+
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
+
+# -------------------------
+# DELETE JOB
+# -------------------------
+
+@app.route('/delete-job', methods=['DELETE'])
+def delete_job():
+    try:
+        job_id = request.args.get('job_id')
+
+        if not job_id:
+            return jsonify({'error': 'Job ID is required'}), 400
+
+        result = jobs_collection.delete_one({'_id': ObjectId(job_id)})
+
+        if result.deleted_count == 0:
+            return jsonify({'error': 'Job not found'}), 404
+
+        applications_collection.delete_many({'job_id': job_id})
+
+        return jsonify({'message': 'Job deleted successfully'}), 200
+
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+# -------------------------
+# SEARCH JOBS
+# -------------------------
 @app.route('/search-jobs', methods=['GET'])
 def search_jobs():
-    try:
-        search_term = request.args.get('search', '')
-        jobs = list(jobs_collection.find({
-            "$or": [
-                {"title": {"$regex": search_term, "$options": "i"}},
-                {"company": {"$regex": search_term, "$options": "i"}},
-                {"location": {"$regex": search_term, "$options": "i"}}
-            ]
-        }))
-        for job in jobs:
-            job['_id'] = str(job['_id'])
-            job['posted_at'] = str(job['posted_at'])
-        return jsonify(jobs), 200
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
+    search_term = request.args.get('search', '').lower()
+    jobs = list(jobs_collection.find())
+    if search_term:
+        jobs = [job for job in jobs if search_term in job['title'].lower() or search_term in job['company'].lower()]
+    for job in jobs:
+        job['_id'] = str(job['_id'])
+        job['posted_at'] = str(job['posted_at'])
+    return jsonify(jobs), 200
 
+
+# -------------------------
+# GET MY JOBS (EMPLOYER)
+# -------------------------
 @app.route('/my-jobs', methods=['GET'])
 def my_jobs():
     try:
         email = request.args.get('email')
+        if not email:
+            return jsonify({'error': 'Email is required'}), 400
+
         jobs = list(jobs_collection.find({'posted_by': email}))
         for job in jobs:
             job['_id'] = str(job['_id'])
             job['posted_at'] = str(job['posted_at'])
         return jsonify(jobs), 200
+
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
 # -------------------------
-# DELETE JOB
+# DELETE NOTIFICATION
 # -------------------------
-@app.route('/delete-job', methods=['DELETE'])
-def delete_job():
+
+@app.route('/delete-notification', methods=['DELETE'])
+def delete_notification():
     try:
-        job_id = request.args.get('job_id')
-        if not job_id:
-            return jsonify({'error': 'Job ID is required'}), 400
-        result = jobs_collection.delete_one({'_id': ObjectId(job_id)})
+        notification_id = request.args.get('notification_id')
+
+        if not notification_id:
+            return jsonify({'error': 'Notification ID is required'}), 400
+
+        result = notifications_collection.delete_one({'_id': ObjectId(notification_id)})
+
         if result.deleted_count == 0:
-            return jsonify({'error': 'Job not found'}), 404
-        applications_collection.delete_many({'job_id': job_id})
-        return jsonify({'message': 'Job deleted successfully'}), 200
+            return jsonify({'error': 'Notification not found'}), 404
+
+        return jsonify({'message': 'Notification deleted successfully'}), 200
+
     except Exception as e:
-        return jsonify({'error': str(e)}), 500
+        return jsonify({'error': str(e)}), 500    
+
 
 # -------------------------
 # APPLY JOB
 # -------------------------
+
 @app.route('/apply-job', methods=['POST'])
 def apply_job():
     try:
         if 'resume' not in request.files:
             return jsonify({'error': 'No resume uploaded'}), 400
+
         file = request.files['resume']
+
         job_id = request.form.get('job_id')
         job_title = request.form.get('job_title')
         company = request.form.get('company')
         applicant_name = request.form.get('applicant_name')
         applicant_email = request.form.get('applicant_email')
 
-        if applications_collection.find_one({'job_id': job_id, 'applicant_email': applicant_email}):
+        if applications_collection.find_one({
+            'job_id': job_id,
+            'applicant_email': applicant_email
+        }):
             return jsonify({'error': 'already_applied'}), 400
+
         if not file.filename.endswith('.pdf'):
             return jsonify({'error': 'Only PDF files allowed'}), 400
 
         filename = f"application_{applicant_email}_{job_id}.pdf"
         filepath = os.path.join(app.config['APPLICATIONS_FOLDER'], filename)
+
         file.save(filepath)
 
         application = {
@@ -203,62 +293,134 @@ def apply_job():
             'applied_at': datetime.now(),
             'status': 'pending'
         }
+
         applications_collection.insert_one(application)
 
+        job = jobs_collection.find_one({'_id': ObjectId(job_id)})
+
+        # ✅ Only EMPLOYER receives this
         notification = {
             'message': f"{applicant_name} applied for {job_title}",
+            'recipient_email': job['posted_by'],
+            'type': 'applied',
             'created_at': datetime.now()
         }
+
         notifications_collection.insert_one(notification)
 
         return jsonify({'message': 'applied'}), 201
+
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+
 
 # -------------------------
 # VIEW APPLICANTS
 # -------------------------
+
 @app.route('/job-applications', methods=['GET'])
 def job_applications():
     try:
         job_id = request.args.get('job_id')
+
         apps = list(applications_collection.find({'job_id': job_id}))
+
         for a in apps:
             a['_id'] = str(a['_id'])
             a['applied_at'] = str(a['applied_at'])
             a['resume_url'] = f"/applications/{os.path.basename(a['resume_path'])}"
+
         return jsonify(apps), 200
+
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+
 
 @app.route('/applications/<filename>')
 def serve_application_file(filename):
     return send_from_directory(app.config['APPLICATIONS_FOLDER'], filename)
 
+
 # -------------------------
-# NOTIFICATIONS
+# SELECT APPLICANT
 # -------------------------
+
+@app.route('/select-applicant', methods=['POST'])
+def select_applicant():
+    try:
+        data = request.json
+
+        application_id = data.get('application_id')
+
+        result = applications_collection.update_one(
+            {'_id': ObjectId(application_id)},
+            {'$set': {'status': 'selected'}}
+        )
+
+        if result.modified_count == 0:
+            return jsonify({'error': 'Application not found'}), 404
+
+        application = applications_collection.find_one({'_id': ObjectId(application_id)})
+        job = jobs_collection.find_one({'_id': ObjectId(application['job_id'])})
+
+        company_email = job.get('company_email') or job.get('posted_by')
+
+        notification = {
+            'message': f"Congratulations! You have been selected for the interview round for {application['job_title']} at {application['company']}. Contact: {company_email}",
+            'recipient_email': application['applicant_email'],
+            'type': 'selection',
+            'created_at': datetime.now()
+        }
+
+        notifications_collection.insert_one(notification)
+
+        return jsonify({'message': 'Applicant selected successfully'}), 200
+
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+# -------------------------
+# GET NOTIFICATIONS 
+# -------------------------
+
 @app.route('/notifications', methods=['GET'])
 def get_notifications():
     try:
-        notifications = list(notifications_collection.find().sort('created_at', -1).limit(10))
+        user_email = request.args.get('email')
+
+        if not user_email:
+            return jsonify({'error': 'Email is required'}), 400
+
+        notifications = list(
+            notifications_collection.find(
+                {'recipient_email': user_email}
+            ).sort('created_at', -1).limit(50)
+        )
+
         for notif in notifications:
             notif['_id'] = str(notif['_id'])
             notif['created_at'] = str(notif['created_at'])
+
         return jsonify(notifications), 200
+
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+
 
 # -------------------------
 # HEALTH CHECK
 # -------------------------
+
 @app.route('/health')
 def health():
     return jsonify({'status': 'OK'}), 200
 
+
 # -------------------------
 # RUN SERVER
 # -------------------------
+
 if __name__ == '__main__':
     print("🚀 Server running at http://localhost:5000")
     print("📁 Frontend:", FRONTEND_DIR)
