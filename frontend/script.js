@@ -582,6 +582,8 @@ async function postJob() {
             })
         });
         const data = await res.json();
+        
+        // ⭐ CHANGE IS HERE - Added setTimeout with 500ms delay
         if(res.ok) {
             msgDiv.innerHTML = 'Job posted!';
             msgDiv.style.color = 'green';
@@ -591,8 +593,13 @@ async function postJob() {
             document.getElementById('job-salary').value = '';
             document.getElementById('job-company-email').value = '';
             document.getElementById('job-description').value = '';
-            loadEmployerJobs();
-            loadHomePage();
+            
+            // ⭐ NEW CODE: Add delay to ensure database update is complete
+            setTimeout(function() {
+                loadEmployerJobs();
+                loadHomePage();
+            }, 500);
+            
             setTimeout(function() { msgDiv.innerHTML = ''; }, 3000);
         } else { 
             msgDiv.innerHTML = data.error; 
@@ -879,17 +886,27 @@ async function loadHomePage() {
         document.getElementById('total-jobs').textContent = jobs.length;
         document.getElementById('new-jobs').textContent = Math.min(jobs.length, 5);
 
+        // ⭐ ONLY SHOW JOBS FOR JOB SEEKERS
+        const homeJobsCard = document.getElementById('home-jobs-card');
         const homeJobsList = document.getElementById('home-jobs-list');
-        homeJobsList.innerHTML = '';
-        jobs.slice(0, 5).forEach(job => {
-            const div = document.createElement('div');
-            div.className = 'job-card';
-            div.innerHTML = '<h4>' + job.title + '</h4>' +
-                '<p><strong>Company:</strong> ' + job.company + '</p>' +
-                '<p><strong>Location:</strong> ' + job.location + '</p>' +
-                '<p><strong>Salary:</strong> ' + job.salary + '</p>';
-            homeJobsList.appendChild(div);
-        });
+        
+        if (currentUser.role === 'jobseeker') {
+            // Show jobs card for job seekers
+            if (homeJobsCard) homeJobsCard.style.display = 'block';
+            homeJobsList.innerHTML = '';
+            jobs.slice(0, 5).forEach(job => {
+                const div = document.createElement('div');
+                div.className = 'job-card';
+                div.innerHTML = '<h4>' + job.title + '</h4>' +
+                    '<p><strong>Company:</strong> ' + job.company + '</p>' +
+                    '<p><strong>Location:</strong> ' + job.location + '</p>' +
+                    '<p><strong>Salary:</strong> ' + job.salary + '</p>';
+                homeJobsList.appendChild(div);
+            });
+        } else {
+            // Hide jobs card for employers
+            if (homeJobsCard) homeJobsCard.style.display = 'none';
+        }
 
         const notifications = await (await fetch(`${API_URL}/notifications?email=${currentUser.email}`)).json();
         document.getElementById('total-notifications').textContent = notifications.length;
@@ -921,7 +938,6 @@ async function loadHomePage() {
             
             div.innerHTML = '<p>' + notif.message + '</p><small>' + notif.created_at + '</small>';
             
-            // Add delete button
             const deleteBtn = document.createElement('button');
             deleteBtn.innerHTML = '✕';
             deleteBtn.className = 'notification-delete-btn';
