@@ -254,51 +254,100 @@ def delete_notification():
 # -------------------------
 # APPLY JOB
 # -------------------------
-
+# -------------------------
+# APPLY JOB (FIXED)
+# -------------------------
 @app.route('/apply-job', methods=['POST'])
 def apply_job():
     try:
         if 'resume' not in request.files:
             return jsonify({'error': 'No resume uploaded'}), 400
 
-        file = request.files['resume']
+        resume_file = request.files['resume']
+        
+        # Safely get certifications - might be None or empty list
+        cert_files = request.files.getlist('certifications') if 'certifications' in request.files else []
 
+        # Get form data
         job_id = request.form.get('job_id')
         job_title = request.form.get('job_title')
         company = request.form.get('company')
         applicant_name = request.form.get('applicant_name')
         applicant_email = request.form.get('applicant_email')
+        
+        # Required fields
+        degree = request.form.get('degree')
+        institution = request.form.get('institution')
+        year = request.form.get('year')
+        skills = request.form.get('skills')
+        
+        # Optional fields
+        projects = request.form.get('projects', '')
+        portfolio_url = request.form.get('portfolio_url', '')
 
+        # Validate required fields
+        if not all([job_id, job_title, company, applicant_name, applicant_email, 
+                    degree, institution, year, skills]):
+            return jsonify({'error': 'Missing required fields'}), 400
+
+        # Check if already applied
         if applications_collection.find_one({
             'job_id': job_id,
             'applicant_email': applicant_email
         }):
             return jsonify({'error': 'already_applied'}), 400
 
-        if not file.filename.endswith('.pdf'):
-            return jsonify({'error': 'Only PDF files allowed'}), 400
+        # Validate resume file
+        if not resume_file.filename:
+            return jsonify({'error': 'No resume file selected'}), 400
+            
+        if not resume_file.filename.endswith('.pdf'):
+            return jsonify({'error': 'Only PDF files allowed for resume'}), 400
 
-        filename = f"application_{applicant_email}_{job_id}.pdf"
-        filepath = os.path.join(app.config['APPLICATIONS_FOLDER'], filename)
+        # Save resume file
+        resume_filename = f"resume_{applicant_email}_{job_id}.pdf"
+        resume_filepath = os.path.join(app.config['APPLICATIONS_FOLDER'], resume_filename)
+        resume_file.save(resume_filepath)
 
-        file.save(filepath)
+        # Save multiple certificate files
+        cert_filepaths = []
+        if cert_files and len(cert_files) > 0:
+            for i, cert_file in enumerate(cert_files):
+                if cert_file and cert_file.filename:
+                    cert_ext = cert_file.filename.rsplit('.', 1)[1].lower()
+                    if cert_ext in ['pdf', 'doc', 'docx']:
+                        cert_filename = f"cert_{applicant_email}_{job_id}_{i+1}.{cert_ext}"
+                        cert_filepath = os.path.join(app.config['APPLICATIONS_FOLDER'], cert_filename)
+                        cert_file.save(cert_filepath)
+                        cert_filepaths.append(cert_filepath)
 
+        # Create application document
         application = {
             'job_id': job_id,
             'job_title': job_title,
             'company': company,
             'applicant_name': applicant_name,
             'applicant_email': applicant_email,
-            'resume_path': filepath,
+            'resume_path': resume_filepath,
+            'certifications_paths': cert_filepaths,
+            'education': {
+                'degree': degree,
+                'institution': institution,
+                'year': year
+            },
+            'skills': skills,
+            'projects': projects,
+            'portfolio_url': portfolio_url,
             'applied_at': datetime.now(),
             'status': 'pending'
         }
 
         applications_collection.insert_one(application)
 
+        # Get job details for notification
         job = jobs_collection.find_one({'_id': ObjectId(job_id)})
 
-        # ✅ Only EMPLOYER receives this
+        # Send notification to employer
         notification = {
             'message': f"{applicant_name} applied for {job_title}",
             'recipient_email': job['posted_by'],
@@ -311,9 +360,8 @@ def apply_job():
         return jsonify({'message': 'applied'}), 201
 
     except Exception as e:
+        print(f"Error in apply_job: {str(e)}")  # Debug logging
         return jsonify({'error': str(e)}), 500
-
-
 # -------------------------
 # VIEW APPLICANTS
 # -------------------------
@@ -329,12 +377,21 @@ def job_applications():
             a['_id'] = str(a['_id'])
             a['applied_at'] = str(a['applied_at'])
             a['resume_url'] = f"/applications/{os.path.basename(a['resume_path'])}"
+            
+            # Add certification URL if exists
+            if a.get('certifications_paths'):
+                a['certifications_urls'] = [
+                    f"/applications/{os.path.basename(path)}" 
+                    for path in a['certifications_paths']
+                ]
+            else:
+                a['certifications_urls'] = []
+
 
         return jsonify(apps), 200
 
     except Exception as e:
         return jsonify({'error': str(e)}), 500
-
 
 @app.route('/applications/<filename>')
 def serve_application_file(filename):

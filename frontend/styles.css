@@ -1,4 +1,4 @@
-/* styles.css - Fully Responsive JobPortal Styles with Custom Modals */
+/* styles.css - Fully Responsive JobPortal Styles with Deep Lavender Theme */
 
 * {
     margin: 0;
@@ -12,7 +12,7 @@ body {
 }
 
 .auth-wrapper {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: linear-gradient(135deg, #6b5b95, #8775ad, #a38fc5);
     min-height: 100vh;
     display: flex;
     align-items: center;
@@ -84,7 +84,7 @@ body {
     width: 45px;
     height: 45px;
     border-radius: 50%;
-    background: linear-gradient(135deg, #667eea, #764ba2);
+    background: linear-gradient(135deg, #6b5b95, #8775ad, #a38fc5);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -127,7 +127,7 @@ body {
 
 .nav-item:hover, .nav-item.active {
     background: rgba(255,255,255,0.1);
-    border-left-color: #667eea;
+    border-left-color: #a38fc5;
 }
 
 .main-content {
@@ -194,7 +194,7 @@ h3 {
 }
 
 .tab.active {
-    background: #667eea;
+    background: linear-gradient(135deg, #6b5b95, #8775ad, #a38fc5);
     color: white;
 }
 
@@ -213,11 +213,11 @@ input, textarea, select, button {
 
 input:focus, textarea:focus, select:focus {
     outline: none;
-    border-color: #667eea;
+    border-color: #8775ad;
 }
 
 button {
-    background: #667eea;
+    background: linear-gradient(135deg, #6b5b95, #8775ad, #a38fc5);
     color: white;
     font-weight: 600;
     cursor: pointer;
@@ -226,7 +226,7 @@ button {
 }
 
 button:hover {
-    background: #5568d3;
+    background: linear-gradient(135deg, #5a4a7d, #6f5f94, #8a76a8);
 }
 
 .btn-logout {
@@ -258,13 +258,13 @@ button:hover {
 }
 
 .job-card:hover {
-    border-color: #667eea;
-    box-shadow: 0 5px 15px rgba(102,126,234,0.2);
+    border-color: #8775ad;
+    box-shadow: 0 5px 15px rgba(135, 117, 173, 0.2);
     transform: translateY(-2px);
 }
 
 .job-card h4 {
-    color: #667eea;
+    color: #6b5b95;
     margin-bottom: 10px;
     font-size: 1.3em;
 }
@@ -364,7 +364,7 @@ button:hover {
 }
 
 .stat-card {
-    background: linear-gradient(135deg, #667eea, #764ba2);
+    background: linear-gradient(135deg, #6b5b95, #8775ad, #a38fc5);
     color: white;
     padding: 25px;
     border-radius: 12px;
@@ -403,7 +403,7 @@ button:hover {
     width: 100px;
     height: 100px;
     border-radius: 50%;
-    background: linear-gradient(135deg, #667eea, #764ba2);
+    background: linear-gradient(135deg, #6b5b95, #8775ad, #a38fc5);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -432,7 +432,7 @@ input[type="file"] {
 }
 
 input[type="file"]::file-selector-button {
-    background: #667eea;
+    background: linear-gradient(135deg, #6b5b95, #8775ad, #a38fc5);
     color: white;
     border: none;
     padding: 10px 20px;
@@ -443,7 +443,7 @@ input[type="file"]::file-selector-button {
 }
 
 input[type="file"]::file-selector-button:hover {
-    background: #5568d3;
+    background: linear-gradient(135deg, #5a4a7d, #6f5f94, #8a76a8);
 }
 
 .form-group label {
@@ -605,14 +605,14 @@ input[type="file"]::file-selector-button:hover {
 }
 
 .custom-modal-btn-primary {
-    background: #667eea;
+    background: linear-gradient(135deg, #6b5b95, #8775ad, #a38fc5);
     color: white;
 }
 
 .custom-modal-btn-primary:hover {
-    background: #5568d3;
+    background: linear-gradient(135deg, #5a4a7d, #6f5f94, #8a76a8);
     transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+    box-shadow: 0 4px 12px rgba(135, 117, 173, 0.3);
 }
 
 .custom-modal-btn-success {
@@ -700,7 +700,7 @@ input[type="file"]::file-selector-button:hover {
 }
 
 .custom-toast-info {
-    border-left: 4px solid #667eea;
+    border-left: 4px solid #8775ad;
 }
 
 .notification {
@@ -1080,4 +1080,3 @@ body {
         justify-content: center;
     }
 }
-

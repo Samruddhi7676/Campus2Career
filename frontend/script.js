@@ -441,49 +441,194 @@ async function searchJobs() {
     } catch (err) { container.innerHTML = 'Error loading jobs'; console.error(err); }
 }
 
-// ========================================
-// APPLY FOR JOB
-// ========================================
 function applyForJob(jobId, jobTitle, company) {
     const modal = document.createElement('div');
     modal.id = 'apply-modal';
-    modal.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.7);display:flex;align-items:center;justify-content:center;z-index:10000;';
+    modal.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.7);display:flex;align-items:center;justify-content:center;z-index:10000;overflow-y:auto;padding:20px;';
     
     const content = document.createElement('div');
-    content.style.cssText = 'background:white;padding:30px;border-radius:12px;max-width:500px;width:90%;';
+    content.style.cssText = 'background:white;padding:30px;border-radius:12px;max-width:600px;width:90%;max-height:90vh;overflow-y:auto;';
     
     const title = document.createElement('h3');
     title.textContent = 'Apply for ' + jobTitle;
+    title.style.marginBottom = '10px';
     content.appendChild(title);
     
     const companyText = document.createElement('p');
-    companyText.style.marginBottom = '15px';
+    companyText.style.marginBottom = '20px';
+    companyText.style.color = '#666';
     companyText.textContent = 'Company: ' + company;
     content.appendChild(companyText);
     
-    const label = document.createElement('p');
-    label.innerHTML = '<strong>Upload Resume (PDF only)*</strong>';
-    content.appendChild(label);
+    // Create form
+    const form = document.createElement('div');
+    
+    // ===== COMPULSORY FIELDS =====
+    const compulsoryTitle = document.createElement('h4');
+    compulsoryTitle.textContent = '📋 Required Information';
+    compulsoryTitle.style.cssText = 'color:#6b5b95;margin-bottom:15px;margin-top:10px;';
+    form.appendChild(compulsoryTitle);
+    
+    // Education - Degree
+    const degreeLabel = document.createElement('label');
+    degreeLabel.innerHTML = '<strong>Degree *</strong>';
+    degreeLabel.style.display = 'block';
+    degreeLabel.style.marginBottom = '5px';
+    form.appendChild(degreeLabel);
+    
+    const degreeInput = document.createElement('input');
+    degreeInput.type = 'text';
+    degreeInput.id = 'apply-degree';
+    degreeInput.placeholder = 'e.g., B.Tech in Computer Science';
+    degreeInput.style.cssText = 'width:100%;padding:10px;margin-bottom:15px;border:2px solid #ddd;border-radius:6px;';
+    form.appendChild(degreeInput);
+    
+    // Education - Institution
+    const institutionLabel = document.createElement('label');
+    institutionLabel.innerHTML = '<strong>Institution *</strong>';
+    institutionLabel.style.display = 'block';
+    institutionLabel.style.marginBottom = '5px';
+    form.appendChild(institutionLabel);
+    
+    const institutionInput = document.createElement('input');
+    institutionInput.type = 'text';
+    institutionInput.id = 'apply-institution';
+    institutionInput.placeholder = 'e.g., ABC University';
+    institutionInput.style.cssText = 'width:100%;padding:10px;margin-bottom:15px;border:2px solid #ddd;border-radius:6px;';
+    form.appendChild(institutionInput);
+    
+    // Education - Year of Graduation
+    const yearLabel = document.createElement('label');
+    yearLabel.innerHTML = '<strong>Year of Graduation *</strong>';
+    yearLabel.style.display = 'block';
+    yearLabel.style.marginBottom = '5px';
+    form.appendChild(yearLabel);
+    
+    const yearInput = document.createElement('input');
+    yearInput.type = 'text';
+    yearInput.id = 'apply-year';
+    yearInput.placeholder = 'e.g., 2024';
+    yearInput.style.cssText = 'width:100%;padding:10px;margin-bottom:15px;border:2px solid #ddd;border-radius:6px;';
+    form.appendChild(yearInput);
+    
+    // Skills
+    const skillsLabel = document.createElement('label');
+    skillsLabel.innerHTML = '<strong>Skills (comma-separated) *</strong>';
+    skillsLabel.style.display = 'block';
+    skillsLabel.style.marginBottom = '5px';
+    form.appendChild(skillsLabel);
+    
+    const skillsInput = document.createElement('textarea');
+    skillsInput.id = 'apply-skills';
+    skillsInput.placeholder = 'e.g., Python, JavaScript, React, Communication, Teamwork';
+    skillsInput.rows = 3;
+    skillsInput.style.cssText = 'width:100%;padding:10px;margin-bottom:15px;border:2px solid #ddd;border-radius:6px;resize:vertical;';
+    form.appendChild(skillsInput);
+    
+    // Email
+    const emailLabel = document.createElement('label');
+    emailLabel.innerHTML = '<strong>Email ID *</strong>';
+    emailLabel.style.display = 'block';
+    emailLabel.style.marginBottom = '5px';
+    form.appendChild(emailLabel);
+    
+    const emailInput = document.createElement('input');
+    emailInput.type = 'email';
+    emailInput.id = 'apply-email';
+    emailInput.value = currentUser.email;
+    emailInput.placeholder = 'your.email@example.com';
+    emailInput.style.cssText = 'width:100%;padding:10px;margin-bottom:15px;border:2px solid #ddd;border-radius:6px;';
+    form.appendChild(emailInput);
+    
+    // Resume Upload
+    const resumeLabel = document.createElement('label');
+    resumeLabel.innerHTML = '<strong>Resume (PDF only) *</strong>';
+    resumeLabel.style.display = 'block';
+    resumeLabel.style.marginBottom = '5px';
+    form.appendChild(resumeLabel);
     
     const fileInput = document.createElement('input');
     fileInput.type = 'file';
     fileInput.id = 'apply-resume';
     fileInput.accept = '.pdf';
-    fileInput.style.cssText = 'margin-bottom:20px;width:100%;padding:10px;border:2px dashed #667eea;';
-    content.appendChild(fileInput);
+    fileInput.style.cssText = 'width:100%;padding:10px;margin-bottom:20px;border:2px dashed #667eea;border-radius:6px;';
+    form.appendChild(fileInput);
     
+    // ===== OPTIONAL FIELDS =====
+    const optionalTitle = document.createElement('h4');
+    optionalTitle.textContent = '✨ Optional (But Encouraged)';
+    optionalTitle.style.cssText = 'color:#6b5b95;margin-bottom:15px;margin-top:20px;border-top:2px solid #f0f0f0;padding-top:20px;';
+    form.appendChild(optionalTitle);
+    
+    // Certifications Upload
+    const certLabel = document.createElement('label');
+    certLabel.innerHTML = '<strong>Certifications (PDF/Word) - Multiple files allowed</strong>';
+    certLabel.style.display = 'block';
+    certLabel.style.marginBottom = '5px';
+    form.appendChild(certLabel);
+    
+    const certInput = document.createElement('input');
+    certInput.type = 'file';
+    certInput.id = 'apply-certifications';
+    certInput.accept = '.pdf,.doc,.docx';
+    certInput.multiple = true; 
+    certInput.style.cssText = 'width:100%;padding:10px;margin-bottom:15px;border:2px dashed #ddd;border-radius:6px;';
+    form.appendChild(certInput);
+    
+    // ADD FILE COUNT DISPLAY - NEW CODE BLOCK
+    const certCount = document.createElement('small');
+    certCount.id = 'cert-count';
+    certCount.style.cssText = 'color:#666;display:block;margin-bottom:15px;';
+    form.appendChild(certCount);
+    
+    certInput.addEventListener('change', function() {
+        const count = this.files.length;
+        certCount.textContent = count > 0 ? `${count} file(s) selected` : '';
+    });
+    
+    // Projects
+    const projectsLabel = document.createElement('label');
+    projectsLabel.innerHTML = '<strong>Projects</strong>';
+    projectsLabel.style.display = 'block';
+    projectsLabel.style.marginBottom = '5px';
+    form.appendChild(projectsLabel);
+    
+    const projectsInput = document.createElement('textarea');
+    projectsInput.id = 'apply-projects';
+    projectsInput.placeholder = 'Describe your key projects (optional)';
+    projectsInput.rows = 3;
+    projectsInput.style.cssText = 'width:100%;padding:10px;margin-bottom:15px;border:2px solid #ddd;border-radius:6px;resize:vertical;';
+    form.appendChild(projectsInput);
+    
+    // LinkedIn/Portfolio URL
+    const urlLabel = document.createElement('label');
+    urlLabel.innerHTML = '<strong>LinkedIn/Portfolio URL</strong>';
+    urlLabel.style.display = 'block';
+    urlLabel.style.marginBottom = '5px';
+    form.appendChild(urlLabel);
+    
+    const urlInput = document.createElement('input');
+    urlInput.type = 'url';
+    urlInput.id = 'apply-url';
+    urlInput.placeholder = 'https://linkedin.com/in/yourprofile';
+    urlInput.style.cssText = 'width:100%;padding:10px;margin-bottom:20px;border:2px solid #ddd;border-radius:6px;';
+    form.appendChild(urlInput);
+    
+    content.appendChild(form);
+    
+    // Buttons
     const btnContainer = document.createElement('div');
-    btnContainer.style.cssText = 'display:flex;gap:10px;';
+    btnContainer.style.cssText = 'display:flex;gap:10px;margin-top:20px;';
     
     const submitBtn = document.createElement('button');
-    submitBtn.textContent = 'Submit';
-    submitBtn.style.cssText = 'flex:1;background:#28a745;color:white;border:none;padding:12px;border-radius:8px;cursor:pointer;';
+    submitBtn.textContent = 'Submit Application';
+    submitBtn.style.cssText = 'flex:1;background:#28a745;color:white;border:none;padding:12px;border-radius:8px;cursor:pointer;font-weight:600;';
     submitBtn.onclick = function() { submitApplication(jobId, jobTitle, company); };
     btnContainer.appendChild(submitBtn);
     
     const cancelBtn = document.createElement('button');
     cancelBtn.textContent = 'Cancel';
-    cancelBtn.style.cssText = 'flex:1;background:#e74c3c;color:white;border:none;padding:12px;border-radius:8px;cursor:pointer;';
+    cancelBtn.style.cssText = 'flex:1;background:#e74c3c;color:white;border:none;padding:12px;border-radius:8px;cursor:pointer;font-weight:600;';
     cancelBtn.onclick = closeApplyModal;
     btnContainer.appendChild(cancelBtn);
     
@@ -504,48 +649,116 @@ function closeApplyModal() {
 }
 
 async function submitApplication(jobId, jobTitle, company) {
-    const fileInput = document.getElementById('apply-resume');
     const msgDiv = document.getElementById('apply-message');
     
-    if (!fileInput.files[0]) { 
-        msgDiv.innerHTML = '<p style="color:red;">Resume required</p>'; 
-        return; 
+    // Get all form values
+    const degree = document.getElementById('apply-degree').value.trim();
+    const institution = document.getElementById('apply-institution').value.trim();
+    const year = document.getElementById('apply-year').value.trim();
+    const skills = document.getElementById('apply-skills').value.trim();
+    const email = document.getElementById('apply-email').value.trim();
+    const resumeFile = document.getElementById('apply-resume').files[0];
+    
+    // Optional fields
+    const certFiles = document.getElementById('apply-certifications').files; // ⭐ CHANGED: Get ALL files
+    const projects = document.getElementById('apply-projects').value.trim();
+    const url = document.getElementById('apply-url').value.trim();
+    
+    // Validate required fields
+    if (!degree || !institution || !year || !skills || !email || !resumeFile) {
+        msgDiv.innerHTML = '<p style="color:red;">❌ Please fill all required fields!</p>';
+        return;
     }
     
-    const file = fileInput.files[0];
-    if (file.type !== 'application/pdf') { 
-        msgDiv.innerHTML = '<p style="color:red;">Only PDF allowed</p>'; 
-        return; 
+    // Validate resume file type
+    if (resumeFile.type !== 'application/pdf') {
+        msgDiv.innerHTML = '<p style="color:red;">❌ Resume must be a PDF file!</p>';
+        return;
     }
-
+    
+    // Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+        msgDiv.innerHTML = '<p style="color:red;">❌ Please enter a valid email address!</p>';
+        return;
+    }
+    
+    // Validate year format
+    const yearRegex = /^\d{4}$/;
+    if (!yearRegex.test(year)) {
+        msgDiv.innerHTML = '<p style="color:red;">❌ Please enter a valid 4-digit year!</p>';
+        return;
+    }
+    
+    // Validate certification file type if provided
+    // ⭐ CHANGED: Validate ALL certification files if provided
+    if (certFiles.length > 0) {
+        const validCertTypes = ['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'];
+        for (let i = 0; i < certFiles.length; i++) {
+            if (!validCertTypes.includes(certFiles[i].type)) {
+                msgDiv.innerHTML = '<p style="color:red;">❌ All certifications must be PDF or Word files!</p>';
+                return;
+            }
+        }
+        
+        // Check file size limit (5MB per file)
+        for (let i = 0; i < certFiles.length; i++) {
+            if (certFiles[i].size > 5 * 1024 * 1024) {
+                msgDiv.innerHTML = '<p style="color:red;">❌ Each certificate file must be under 5MB!</p>';
+                return;
+            }
+        }
+    }
+ 
+    // Create FormData
     const formData = new FormData();
-    formData.append('resume', file);
+    formData.append('resume', resumeFile);
     formData.append('job_id', jobId);
     formData.append('job_title', jobTitle);
     formData.append('company', company);
     formData.append('applicant_name', currentUser.name);
-    formData.append('applicant_email', currentUser.email);
+    formData.append('applicant_email', email);
+    
+    // Add required fields
+    formData.append('degree', degree);
+    formData.append('institution', institution);
+    formData.append('year', year);
+    formData.append('skills', skills);
+    
+    // Add optional fields if provided
+    if (certFiles.length > 0) {
+        for (let i = 0; i < certFiles.length; i++) {
+            formData.append('certifications', certFiles[i]);
+        }
+    }
+    
+    if (projects) {
+        formData.append('projects', projects);
+    }
+    if (url) {
+        formData.append('portfolio_url', url);
+    }
 
-    msgDiv.innerHTML = '<p style="color:#667eea;">Submitting...</p>';
+    msgDiv.innerHTML = '<p style="color:#667eea;">📤 Submitting your application...</p>';
     
     try {
         const res = await fetch(`${API_URL}/apply-job`, { method:'POST', body:formData });
         const data = await res.json();
-        if (res.ok) { 
-            msgDiv.innerHTML = '<p style="color:green;">Submitted!</p>'; 
+        
+        if (res.ok) {
+            msgDiv.innerHTML = '<p style="color:green;">✅ Application submitted successfully!</p>';
             setTimeout(function() {
-                closeApplyModal(); 
+                closeApplyModal();
                 showToast('Application submitted successfully!', 'success');
-            }, 1500); 
+            }, 1500);
         } else {
-            msgDiv.innerHTML = '<p style="color:red;">' + data.error + '</p>';
+            msgDiv.innerHTML = '<p style="color:red;">❌ ' + data.error + '</p>';
         }
-    } catch(e) { 
-        msgDiv.innerHTML = '<p style="color:red;">Server error</p>'; 
+    } catch(e) {
+        msgDiv.innerHTML = '<p style="color:red;">❌ Server error occurred</p>';
         console.error(e);
     }
 }
-
 // ========================================
 // POST JOB
 // ========================================
@@ -639,10 +852,10 @@ async function deleteJob(jobId) {
 async function viewApplicants(jobId) {
     const modal = document.createElement('div'); 
     modal.id = 'applicants-modal';
-    modal.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.7);display:flex;align-items:center;justify-content:center;z-index:10000;';
+    modal.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.7);display:flex;align-items:center;justify-content:center;z-index:10000;overflow-y:auto;padding:20px;';
     
     const content = document.createElement('div');
-    content.style.cssText = 'background:white;padding:30px;border-radius:12px;width:90%;max-width:700px;max-height:80%;overflow-y:auto;';
+    content.style.cssText = 'background:white;padding:30px;border-radius:12px;width:90%;max-width:900px;max-height:85vh;overflow-y:auto;';
     
     const title = document.createElement('h3');
     title.style.marginBottom = '20px';
@@ -656,7 +869,7 @@ async function viewApplicants(jobId) {
     
     const closeBtn = document.createElement('button');
     closeBtn.textContent = 'Close';
-    closeBtn.style.cssText = 'margin-top:20px;width:100%;padding:12px;background:#e74c3c;color:white;border:none;border-radius:8px;cursor:pointer;';
+    closeBtn.style.cssText = 'margin-top:20px;width:100%;padding:12px;background:#e74c3c;color:white;border:none;border-radius:8px;cursor:pointer;font-weight:600;';
     closeBtn.onclick = closeApplicantsModal;
     content.appendChild(closeBtn);
     
@@ -673,29 +886,96 @@ async function viewApplicants(jobId) {
         listDiv.innerHTML = '';
         apps.forEach(app => {
             const div = document.createElement('div'); 
-            div.style.cssText = 'border:1px solid #ddd;padding:15px;margin-bottom:10px;border-radius:6px;background:#f9f9f9;';
+            div.style.cssText = 'border:1px solid #ddd;padding:20px;margin-bottom:15px;border-radius:8px;background:#f9f9f9;';
             
             let statusBadge = '';
             if (app.status === 'selected') {
-                statusBadge = '<span style="background:#28a745;color:white;padding:4px 10px;border-radius:4px;font-size:0.85em;margin-left:10px;">✓ Selected</span>';
+                statusBadge = '<span style="background:#28a745;color:white;padding:5px 12px;border-radius:4px;font-size:0.85em;margin-left:10px;">✓ Selected</span>';
             }
             
-            div.innerHTML = '<p style="margin-bottom:5px;"><strong>Name:</strong> ' + app.applicant_name + statusBadge + '</p>' +
-                '<p style="margin-bottom:10px;"><strong>Email:</strong> ' + app.applicant_email + '</p>';
+            // Basic Info
+            let html = `
+                <div style="margin-bottom:15px;border-bottom:2px solid #e0e0e0;padding-bottom:15px;">
+                    <p style="margin-bottom:8px;font-size:1.1em;">
+                        <strong>👤 Name:</strong> ${app.applicant_name} ${statusBadge}
+                    </p>
+                    <p style="margin-bottom:8px;">
+                        <strong>📧 Email:</strong> ${app.applicant_email}
+                    </p>
+                </div>
+            `;
             
+            // Education Section
+            if (app.education) {
+                html += `
+                    <div style="margin-bottom:15px;padding:12px;background:#e8f5e9;border-radius:6px;">
+                        <p style="margin-bottom:5px;font-weight:600;color:#2e7d32;">🎓 Education</p>
+                        <p style="margin-bottom:3px;"><strong>Degree:</strong> ${app.education.degree}</p>
+                        <p style="margin-bottom:3px;"><strong>Institution:</strong> ${app.education.institution}</p>
+                        <p><strong>Year:</strong> ${app.education.year}</p>
+                    </div>
+                `;
+            }
+            
+            // Skills Section
+            if (app.skills) {
+                html += `
+                    <div style="margin-bottom:15px;padding:12px;background:#e3f2fd;border-radius:6px;">
+                        <p style="margin-bottom:5px;font-weight:600;color:#1976d2;">💼 Skills</p>
+                        <p>${app.skills}</p>
+                    </div>
+                `;
+            }
+            
+            // Projects Section (if provided)
+            if (app.projects) {
+                html += `
+                    <div style="margin-bottom:15px;padding:12px;background:#fff3e0;border-radius:6px;">
+                        <p style="margin-bottom:5px;font-weight:600;color:#f57c00;">🚀 Projects</p>
+                        <p style="white-space:pre-wrap;">${app.projects}</p>
+                    </div>
+                `;
+            }
+            
+            // Portfolio URL (if provided)
+            if (app.portfolio_url) {
+                html += `
+                    <div style="margin-bottom:15px;padding:12px;background:#f3e5f5;border-radius:6px;">
+                        <p style="margin-bottom:5px;font-weight:600;color:#7b1fa2;">🔗 Portfolio/LinkedIn</p>
+                        <p><a href="${app.portfolio_url}" target="_blank" style="color:#667eea;text-decoration:none;font-weight:600;">${app.portfolio_url}</a></p>
+                    </div>
+                `;
+            }
+            
+            div.innerHTML = html;
+            
+            // Action Buttons
             const btnContainer = document.createElement('div');
-            btnContainer.style.cssText = 'display:flex;gap:10px;margin-top:10px;';
+            btnContainer.style.cssText = 'display:flex;gap:10px;margin-top:15px;flex-wrap:wrap;';
             
+            // View Resume Button
             const viewResumeBtn = document.createElement('button');
-            viewResumeBtn.textContent = 'View Resume';
-            viewResumeBtn.style.cssText = 'background:#667eea;color:white;padding:8px 15px;border:none;border-radius:4px;cursor:pointer;';
+            viewResumeBtn.textContent = '📄 View Resume';
+            viewResumeBtn.style.cssText = 'background:#667eea;color:white;padding:10px 18px;border:none;border-radius:6px;cursor:pointer;font-weight:600;flex:1;min-width:140px;';
             viewResumeBtn.onclick = function() { viewResume(app.resume_url); };
             btnContainer.appendChild(viewResumeBtn);
             
+            // View Certifications Button (if exists)
+            if (app.certifications_urls && app.certifications_urls.length > 0) {
+                app.certifications_urls.forEach((url, index) => {
+                    const viewCertBtn = document.createElement('button');
+                    viewCertBtn.textContent = `🏆 Certificate ${index + 1}`;
+                    viewCertBtn.style.cssText = 'background:#8775ad;color:white;padding:10px 18px;border:none;border-radius:6px;cursor:pointer;font-weight:600;flex:1;min-width:140px;';
+                    viewCertBtn.onclick = function() { viewResume(url); };
+                    btnContainer.appendChild(viewCertBtn);
+                });
+            }
+            
+            // Select Applicant Button
             if (app.status !== 'selected') {
                 const selectBtn = document.createElement('button');
-                selectBtn.textContent = 'Select Applicant';
-                selectBtn.style.cssText = 'background:#28a745;color:white;padding:8px 15px;border:none;border-radius:4px;cursor:pointer;';
+                selectBtn.textContent = '✅ Select Applicant';
+                selectBtn.style.cssText = 'background:#28a745;color:white;padding:10px 18px;border:none;border-radius:6px;cursor:pointer;font-weight:600;flex:1;min-width:140px;';
                 selectBtn.onclick = function() { selectApplicant(app._id, app.applicant_name); };
                 btnContainer.appendChild(selectBtn);
             }
