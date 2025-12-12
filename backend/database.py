@@ -11,6 +11,8 @@ try:
     jobs_collection = db["jobs"]
     notifications_collection = db["notifications"]
     applications_collection = db["applications"]
+    internships_collection = db["internships"]
+    internship_applications_collection = db["internship_applications"]
 
     print("🌐 Connected to MongoDB Atlas Successfully!")
 

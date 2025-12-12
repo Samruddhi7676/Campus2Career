@@ -1,4 +1,4 @@
-/* styles.css - Fully Responsive JobPortal Styles with Deep Lavender Theme */
+/* styles.css - Laptop-Only JobPortal Styles with Deep Lavender Theme */
 
 * {
     margin: 0;
@@ -9,6 +9,7 @@
 body {
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
     background: #f5f7fa;
+    overflow-x: hidden;
 }
 
 .auth-wrapper {
@@ -51,7 +52,6 @@ body {
     height: 100vh;
     overflow-y: auto;
     z-index: 1000;
-    transition: transform 0.3s ease;
     left: 0;
     top: 0;
 }
@@ -146,8 +146,6 @@ body {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    flex-wrap: wrap;
-    gap: 15px;
 }
 
 .top-bar h1 {
@@ -281,6 +279,8 @@ button:hover {
     margin: 12px 0;
     border-radius: 8px;
     border-left: 4px solid #2196f3;
+    position: relative;
+    padding-right: 40px;
 }
 
 .notification p {
@@ -323,7 +323,6 @@ button:hover {
     display: flex;
     gap: 10px;
     margin-bottom: 25px;
-    flex-wrap: wrap;
 }
 
 .search-box input {
@@ -358,7 +357,7 @@ button:hover {
 
 .stats-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    grid-template-columns: repeat(3, 1fr);
     gap: 20px;
     margin-bottom: 30px;
 }
@@ -396,7 +395,6 @@ button:hover {
     margin-bottom: 30px;
     padding-bottom: 20px;
     border-bottom: 2px solid #f0f0f0;
-    flex-wrap: wrap;
 }
 
 .profile-avatar {
@@ -480,48 +478,6 @@ input[type="file"]::file-selector-button:hover {
 #auth-page .logo-img {
     width: 120px;
     height: 120px;
-}
-
-.mobile-menu-toggle {
-    display: none;
-    position: fixed;
-    top: 20px;
-    left: 20px;
-    z-index: 1100;
-    background: #2c3e50;
-    color: white;
-    border: none;
-    padding: 12px 16px;
-    border-radius: 8px;
-    cursor: pointer;
-    font-size: 24px;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
-    width: 50px;
-    height: 50px;
-    align-items: center;
-    justify-content: center;
-}
-
-.mobile-menu-toggle:hover {
-    background: #34495e;
-}
-
-.sidebar-overlay {
-    display: none;
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background: rgba(0,0,0,0.6);
-    z-index: 999;
-    opacity: 0;
-    transition: opacity 0.3s ease;
-}
-
-.sidebar-overlay.active {
-    display: block;
-    opacity: 1;
 }
 
 /* CUSTOM MODAL STYLES */
@@ -703,11 +659,6 @@ input[type="file"]::file-selector-button:hover {
     border-left: 4px solid #8775ad;
 }
 
-.notification {
-    position: relative;
-    padding-right: 40px;
-}
-
 .notification-delete-btn {
     position: absolute;
     top: 50%;
@@ -737,7 +688,9 @@ input[type="file"]::file-selector-button:hover {
 }
 
 #apply-modal,
-#applicants-modal {
+#applicants-modal,
+#apply-internship-modal,
+#internship-applicants-modal {
     position: fixed !important;
     top: 0 !important;
     left: 0 !important;
@@ -753,330 +706,15 @@ input[type="file"]::file-selector-button:hover {
 }
 
 #apply-modal > div,
-#applicants-modal > div {
+#applicants-modal > div,
+#apply-internship-modal > div,
+#internship-applicants-modal > div {
     position: relative !important;
     max-height: 90vh !important;
     overflow-y: auto !important;
     margin: auto !important;
 }
 
-/* RESPONSIVE STYLES */
-@media (max-width: 1024px) {
-    .stats-grid {
-        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-    }
-    
-    .top-bar h1 {
-        font-size: 1.5em;
-    }
-    
-    .card {
-        padding: 20px;
-    }
-}
-
-@media (max-width: 768px) {
-    .mobile-menu-toggle {
-        display: flex;
-    }
-    
-    .sidebar {
-        transform: translateX(-100%);
-    }
-    
-    .sidebar.mobile-active {
-        transform: translateX(0);
-        box-shadow: 4px 0 12px rgba(0,0,0,0.3);
-    }
-    
-    .main-content {
-        margin-left: 0;
-        width: 100%;
-        padding: 80px 15px 15px 15px;
-    }
-    
-    .top-bar {
-        padding: 15px;
-        flex-direction: column;
-        align-items: flex-start;
-    }
-    
-    .top-bar h1 {
-        font-size: 1.3em;
-        margin-bottom: 10px;
-    }
-    
-    .btn-logout {
-        width: 100% !important;
-        padding: 10px 20px !important;
-    }
-    
-    .auth-container {
-        padding: 30px 20px;
-    }
-    
-    .stats-grid {
-        grid-template-columns: 1fr;
-        gap: 15px;
-    }
-    
-    .card {
-        padding: 15px;
-    }
-    
-    .job-card {
-        padding: 15px;
-    }
-    
-    .job-card h4 {
-        font-size: 1.1em;
-    }
-    
-    .search-box {
-        flex-direction: column;
-    }
-    
-    .search-box input,
-    .search-box button {
-        width: 100%;
-        min-width: unset;
-    }
-    
-    .profile-header {
-        flex-direction: column;
-        text-align: center;
-    }
-    
-    .profile-avatar {
-        width: 80px;
-        height: 80px;
-        font-size: 2em;
-    }
-    
-    .tabs {
-        flex-direction: column;
-        gap: 10px;
-    }
-    
-    .tab {
-        padding: 12px;
-    }
-    
-    input, textarea, select, button {
-        font-size: 16px;
-    }
-    
-    .nav-item {
-        padding: 14px 20px;
-        min-height: 50px;
-        display: flex;
-        align-items: center;
-        gap: 12px;
-    }
-    
-    .nav-item span:first-child {
-        font-size: 1.2em;
-        width: 24px;
-        display: inline-block;
-        text-align: center;
-        flex-shrink: 0;
-    }
-    
-    .nav-item span:last-child {
-        flex: 1;
-    }
-    
-    .user-profile {
-        padding: 15px 20px;
-        min-height: 70px;
-    }
-    
-    .user-avatar {
-        width: 45px;
-        height: 45px;
-        font-size: 1.2em;
-    }
-    
-    .logo-img {
-        width: 40px;
-        height: 40px;
-    }
-    
-    .logo-text {
-        font-size: 14px;
-    }
-    
-    .sidebar-header {
-        padding: 0 20px 15px;
-        margin-bottom: 15px;
-    }
-    
-    .custom-modal-content {
-        max-width: 90%;
-        padding: 25px 20px;
-    }
-    
-    .custom-toast {
-        right: 15px;
-        left: 15px;
-        bottom: 20px;
-        min-width: unset;
-    }
-    
-    .notification-delete-btn {
-        width: 24px;
-        height: 24px;
-        font-size: 14px;
-        right: 8px;
-    }
-    
-    .notification {
-        padding-right: 35px;
-    }
-    
-    #apply-modal > div,
-    #applicants-modal > div {
-        width: 95% !important;
-        max-width: 95% !important;
-        padding: 20px !important;
-    }
-}
-
-@media (max-width: 480px) {
-    .main-content {
-        padding: 70px 10px 10px 10px;
-    }
-    
-    .top-bar {
-        padding: 12px;
-    }
-    
-    .top-bar h1 {
-        font-size: 1.1em;
-    }
-    
-    .card {
-        padding: 12px;
-        margin-bottom: 15px;
-    }
-    
-    .job-card {
-        padding: 12px;
-        margin: 10px 0;
-    }
-    
-    .job-card h4 {
-        font-size: 1em;
-    }
-    
-    .stat-card {
-        padding: 20px;
-    }
-    
-    .stat-card h3 {
-        font-size: 1.6em;
-    }
-    
-    h2 {
-        font-size: 1.3em;
-    }
-    
-    h3 {
-        font-size: 1.1em;
-    }
-    
-    .profile-avatar {
-        width: 70px;
-        height: 70px;
-        font-size: 1.8em;
-    }
-    
-    .profile-section {
-        padding: 20px 15px;
-    }
-    
-    .notification {
-        padding: 12px;
-    }
-    
-    #resume-result {
-        padding: 15px;
-    }
-    
-    #auth-page .logo-img {
-        width: 80px;
-        height: 80px;
-    }
-    
-    .auth-container {
-        padding: 25px 15px;
-    }
-    
-    .mobile-menu-toggle {
-        top: 15px;
-        left: 15px;
-        width: 45px;
-        height: 45px;
-        padding: 10px;
-        font-size: 20px;
-    }
-    
-    .custom-modal-content {
-        padding: 20px 15px;
-    }
-    
-    .custom-modal-buttons {
-        flex-direction: column;
-    }
-    
-    .custom-modal-btn {
-        width: 100%;
-    }
-    
-    .notification-delete-btn {
-        width: 22px;
-        height: 22px;
-        font-size: 12px;
-        right: 6px;
-    }
-    
-    .notification {
-        padding-right: 32px;
-    }
-    
-    .notification p {
-        font-size: 14px;
-        padding-right: 5px;
-    }
-    
-    .notification small {
-        font-size: 11px;
-    }
-}
-
-@media (max-width: 768px) and (orientation: landscape) {
-    .sidebar {
-        width: 220px;
-    }
-    
-    .main-content {
-        padding: 70px 15px 15px 15px;
-    }
-}
-
 html {
     scroll-behavior: smooth;
-}
-
-body {
-    overflow-x: hidden;
-}
-
-@media (max-width: 768px) {
-    button, .nav-item, .tab, .user-profile {
-        min-height: 48px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-    }
 }

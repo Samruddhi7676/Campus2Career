@@ -38,7 +38,7 @@
                         <option value="jobseeker">Job Seeker</option>
                         <option value="employer">Employer</option>
                     </select>
-                    <button onclick="signup()">📄 Create Account</button>
+                    <button onclick="signup()">🔄 Create Account</button>
                     <div id="signup-message"></div>
                 </div>
             </div>
@@ -71,6 +71,10 @@
                         <span>💼</span>
                         <span>Find Jobs</span>
                     </li>
+                    <li class="nav-item" onclick="showSection('internships')" id="nav-internships">
+                        <span>🎓</span>
+                        <span>Find Internships</span>
+                    </li>
                     <li class="nav-item" onclick="showSection('resume')" id="nav-resume">
                         <span>📄</span>
                         <span>Resume Review</span>
@@ -79,9 +83,17 @@
                         <span>📢</span>
                         <span>Post Job</span>
                     </li>
+                    <li class="nav-item" onclick="showSection('post-internship')" id="nav-post-internship" style="display: none;">
+                        <span>🎯</span>
+                        <span>Post Internship</span>
+                    </li>
                     <li class="nav-item" onclick="showSection('my-jobs')" id="nav-my-jobs" style="display: none;">
                         <span>📋</span>
                         <span>My Jobs</span>
+                    </li>
+                    <li class="nav-item" onclick="showSection('my-internships')" id="nav-my-internships" style="display: none;">
+                        <span>📝</span>
+                        <span>My Internships</span>
                     </li>
                     <li class="nav-item" onclick="showSection('notifications')">
                         <span>🔔</span>
@@ -98,7 +110,7 @@
         <div class="main-content">
             <div id="home-section" class="content-section active">
                 <div class="top-bar">
-                    <h1>👋‹ Welcome back, <span id="home-user-name">User</span>!</h1>
+                    <h1>👋 Welcome back, <span id="home-user-name">User</span>!</h1>
                     <button class="btn-logout" onclick="window.logout()">Logout</button>
                 </div>
 
@@ -108,8 +120,8 @@
                         <p>Total Jobs Available</p>
                     </div>
                     <div class="stat-card">
-                        <h3 id="new-jobs">0</h3>
-                        <p>New This Week</p>
+                        <h3 id="total-internships">0</h3>
+                        <p>Total Internships</p>
                     </div>
                     <div class="stat-card">
                         <h3 id="total-notifications">0</h3>
@@ -120,6 +132,11 @@
                 <div class="card" id="home-jobs-card">
                     <h2>🔥 Latest Job Openings</h2>
                     <div id="home-jobs-list"></div>
+                </div>
+
+                <div class="card" id="home-internships-card">
+                    <h2>🎓 Latest Internships</h2>
+                    <div id="home-internships-list"></div>
                 </div>
 
                 <div class="card">
@@ -138,9 +155,25 @@
                 <div class="card">
                     <div class="search-box">
                         <input type="text" id="search-input" placeholder="Search by title, company, or location...">
-                        <button onclick="searchJobs()">🔍Search</button>
+                        <button onclick="searchJobs()">🔍 Search</button>
                     </div>
                     <div id="jobs-list"></div>
+                </div>
+            </div>
+
+            <!-- Internships Section -->
+            <div id="internships-section" class="content-section">
+                <div class="top-bar">
+                    <h1>🎓 Find Internships</h1>
+                    <button class="btn-logout" onclick="window.logout()">Logout</button>
+                </div>
+
+                <div class="card">
+                    <div class="search-box">
+                        <input type="text" id="search-internship-input" placeholder="Search by title, company, or location...">
+                        <button onclick="searchInternships()">🔍 Search</button>
+                    </div>
+                    <div id="internships-list"></div>
                 </div>
             </div>
 
@@ -202,9 +235,39 @@
                     </div>
                 </div>
 
+                <div id="post-internship-section" class="content-section">
+                    <div class="top-bar">
+                        <h1>🎯 Post a New Internship</h1>
+                        <button class="btn-logout" onclick="window.logout()">Logout</button>
+                    </div>
+
+                    <div class="card">
+                        <input type="text" id="internship-title" placeholder="Internship Title">
+                        <input type="text" id="internship-company" placeholder="Company Name">
+                        <input type="text" id="internship-location" placeholder="Location">
+                        <input type="text" id="internship-duration" placeholder="Duration (e.g., 3 months, 6 months)">
+                        
+                        <label style="margin-top: 10px; margin-bottom: 5px; font-weight: 600;">Stipend Type:</label>
+                        <select id="internship-stipend-type" onchange="toggleStipendAmount()">
+                            <option value="">Select Stipend Type</option>
+                            <option value="unpaid">Unpaid / Free</option>
+                            <option value="paid">Paid / With Stipend</option>
+                        </select>
+                        
+                        <div id="stipend-amount-container" style="display: none;">
+                            <input type="text" id="internship-stipend-amount" placeholder="Stipend Amount (e.g., ₹10,000/month)">
+                        </div>
+                        
+                        <input type="email" id="internship-company-email" placeholder="Company Email (for applicant contact)">
+                        <textarea id="internship-description" rows="6" placeholder="Internship Description..."></textarea>
+                        <button type="button" onclick="postInternship()">✅ Post Internship</button>
+                        <div id="post-internship-message" style="color:red; margin-top:10px;"></div>
+                    </div>
+                </div>
+
                 <div id="my-jobs-section" class="content-section">
                     <div class="top-bar">
-                        <h1>📋Your Posted Jobs</h1>
+                        <h1>📋 Your Posted Jobs</h1>
                         <button class="btn-logout" onclick="window.logout()">Logout</button>
                     </div>
 
@@ -213,9 +276,20 @@
                     </div>
                 </div>
 
+                <div id="my-internships-section" class="content-section">
+                    <div class="top-bar">
+                        <h1>📝 Your Posted Internships</h1>
+                        <button class="btn-logout" onclick="window.logout()">Logout</button>
+                    </div>
+
+                    <div class="card">
+                        <div id="my-internships-list"></div>
+                    </div>
+                </div>
+
                 <div id="notifications-section" class="content-section">
                     <div class="top-bar">
-                        <h1>🔔All Notifications</h1>
+                        <h1>🔔 All Notifications</h1>
                         <button class="btn-logout" onclick="window.logout()">Logout</button>
                     </div>
 
