@@ -6,6 +6,73 @@ const API_URL = 'http://localhost:5000';
 let currentUser = null;
 console.log('Script loaded successfully');
 
+//========================================
+// BROWSER BACK BUTTON SUPPORT
+// ========================================
+
+let originalShowSection = null;
+let isModalOpen = false;  // ADD THIS NEW VARIABLE
+
+window.addEventListener('DOMContentLoaded', function() {
+    originalShowSection = window.showSection;
+    
+    window.showSection = function(section) {
+        originalShowSection(section);
+        
+        // MODIFIED: Only push state if no modal is open
+        if (!isModalOpen) {
+            history.pushState({ section: section, modal: null }, '', '#' + section);
+        }
+    };
+    
+    history.replaceState({ section: 'home', modal: null }, '', '#home');
+});
+
+// MODIFIED: Simplified back button handler
+window.addEventListener('popstate', function(event) {
+    const applyModal = document.getElementById('apply-modal');
+    const applicantsModal = document.getElementById('applicants-modal');
+    const applyInternshipModal = document.getElementById('apply-internship-modal');
+    const internshipApplicantsModal = document.getElementById('internship-applicants-modal');
+    
+    // Close modal if open
+    if (applyModal) {
+        applyModal.remove();
+        isModalOpen = false;
+        return;
+    }
+    if (applicantsModal) {
+        applicantsModal.remove();
+        isModalOpen = false;
+        return;
+    }
+    if (applyInternshipModal) {
+        applyInternshipModal.remove();
+        isModalOpen = false;
+        return;
+    }
+    if (internshipApplicantsModal) {
+        internshipApplicantsModal.remove();
+        isModalOpen = false;
+        return;
+    }
+    
+    // Navigate to section
+    if (event.state && event.state.section) {
+        if (originalShowSection) {
+            originalShowSection(event.state.section);
+        } else {
+            showSection(event.state.section);
+        }
+    } else {
+        if (originalShowSection) {
+            originalShowSection('home');
+        } else {
+            showSection('home');
+        }
+    }
+});
+
 // ========================================
 // CUSTOM MODAL SYSTEM
 // ========================================
@@ -246,8 +313,9 @@ function logout() {
 }
 
 // ========================================
-// DASHBOARD
+// DASHBOARD & NAVIGATION
 // ========================================
+
 function showDashboard() {
     document.getElementById('auth-page').classList.remove('active');
     document.getElementById('dashboard-page').classList.add('active');
@@ -339,6 +407,8 @@ function showSection(section) {
         closeMobileMenu();
     }
 }
+
+
 // ========================================
 // HOME PAGE & JOB FUNCTIONS
 // ========================================
@@ -395,8 +465,9 @@ async function loadHomePage() {
 
         let homeNotifications;
         if (currentUser.role === 'jobseeker') {
+            // ✅ FIXED: Added 'rejection' to the filter
             homeNotifications = notifications.filter(n => 
-                ['selection', 'new_job', 'new_internship'].includes(n.type)
+                ['selection', 'rejection', 'new_job', 'new_internship'].includes(n.type)
              );
         } else {
             homeNotifications = notifications.filter(n => 
@@ -429,9 +500,6 @@ async function loadHomePage() {
     } catch (err) { console.error(err); }
 }
 
-// ========================================
-// SEARCH JOBS
-// ========================================
 async function searchJobs() {
     const term = document.getElementById('search-input') ? document.getElementById('search-input').value : '';
     const container = document.getElementById('jobs-list');
@@ -472,9 +540,6 @@ async function searchJobs() {
     } catch (err) { container.innerHTML = 'Error loading jobs'; console.error(err); }
 }
 
-// ========================================
-// POST JOB
-// ========================================
 async function postJob() {
     const title = document.getElementById('job-title').value.trim();
     const company = document.getElementById('job-company').value.trim();
@@ -536,9 +601,6 @@ async function postJob() {
     }
 }
 
-// ========================================
-// DELETE JOB
-// ========================================
 async function deleteJob(jobId) {
     showCustomConfirm('Are you sure you want to delete this job?', async function() {
         try {
@@ -557,9 +619,6 @@ async function deleteJob(jobId) {
     });
 }
 
-// ========================================
-// LOAD EMPLOYER JOBS
-// ========================================
 async function loadEmployerJobs() {
     const container = document.getElementById('my-jobs-list');
     if (!container) return;
@@ -605,8 +664,9 @@ async function loadEmployerJobs() {
         console.error(err);
     }
 }
+
 // ========================================
-// JOB APPLICATION FUNCTIONS
+// JOB APPLICATION & MODALS 
 // ========================================
 
 function applyForJob(jobId, jobTitle, company) {
@@ -634,13 +694,7 @@ function applyForJob(jobId, jobTitle, company) {
     compulsoryTitle.textContent = '📋 Required Information';
     compulsoryTitle.style.cssText = 'color:#6b5b95;margin-bottom:15px;margin-top:10px;';
     form.appendChild(compulsoryTitle);
-    
-    const educationLabel = document.createElement('label');
-    educationLabel.innerHTML = '<strong>Education *</strong>';
-    educationLabel.style.display = 'block';
-    educationLabel.style.marginBottom = '5px';
-    form.appendChild(educationLabel);
-    
+
     const educationInput = document.createElement('input');
     educationInput.type = 'text';
     educationInput.id = 'apply-education';
@@ -796,7 +850,7 @@ function applyForJob(jobId, jobTitle, company) {
     const cancelBtn = document.createElement('button');
     cancelBtn.textContent = 'Cancel';
     cancelBtn.style.cssText = 'flex:1;background:#e74c3c;color:white;border:none;padding:12px;border-radius:8px;cursor:pointer;font-weight:600;';
-    cancelBtn.onclick = closeApplyModal;
+    cancelBtn.onclick = function() { closeModalWithHistory('apply-modal'); };
     btnContainer.appendChild(cancelBtn);
     
     content.appendChild(btnContainer);
@@ -807,12 +861,44 @@ function applyForJob(jobId, jobTitle, company) {
     content.appendChild(msgDiv);
     
     modal.appendChild(content);
+    isModalOpen = true;
+    history.pushState({ section: getCurrentSection(), modal: 'apply-modal' }, '', window.location.href);
     document.body.appendChild(modal);
+    
+}
+
+function closeApplyModal() { 
+    closeModalWithHistory('apply-modal');
+}
+
+// Helper function to get current section
+function getCurrentSection() {
+    const activeSectionEl = document.querySelector('.content-section.active');
+    if (!activeSectionEl) return 'home';
+    
+    const sectionMap = {
+        'home-section': 'home',
+        'jobs-section': 'jobs',
+        'internships-section': 'internships',
+        'resume-section': 'resume',
+        'post-job-section': 'post-job',
+        'post-internship-section': 'post-internship',
+        'my-jobs-section': 'my-jobs',
+        'my-internships-section': 'my-internships',
+        'notifications-section': 'notifications',
+        'profile-section': 'profile'
+    };
+    
+    return sectionMap[activeSectionEl.id] || 'home';
 }
 
 function closeApplyModal() { 
     const m = document.getElementById('apply-modal'); 
-    if(m) m.remove(); 
+    if(m) {
+        m.remove();
+        isModalOpen = false;  
+        history.back();  
+    }
 }
 
 async function submitApplication(jobId, jobTitle, company) {
@@ -883,8 +969,9 @@ async function submitApplication(jobId, jobTitle, company) {
         console.error(e);
     }
 }
+
 // ========================================
-// VIEW APPLICANTS & INTERNSHIP FUNCTIONS
+// VIEW APPLICANTS MODAL
 // ========================================
 
 async function viewApplicants(jobId) {
@@ -908,12 +995,15 @@ async function viewApplicants(jobId) {
     const closeBtn = document.createElement('button');
     closeBtn.textContent = 'Close';
     closeBtn.style.cssText = 'margin-top:20px;width:100%;padding:12px;background:#e74c3c;color:white;border:none;border-radius:8px;cursor:pointer;font-weight:600;';
-    closeBtn.onclick = closeApplicantsModal;
+    closeBtn.onclick = function() { closeModalWithHistory('applicants-modal'); };
     content.appendChild(closeBtn);
-    
+   
     modal.appendChild(content);
+    isModalOpen = true;
+    history.pushState({ section: getCurrentSection(), modal: 'applicants-modal' }, '', window.location.href);
     document.body.appendChild(modal);
-
+    
+    // Load applicants data
     try {
         const apps = await (await fetch(`${API_URL}/job-applications?job_id=${jobId}`)).json();
         if(!apps || apps.length === 0) { 
@@ -926,11 +1016,14 @@ async function viewApplicants(jobId) {
             const div = document.createElement('div'); 
             div.style.cssText = 'border:1px solid #ddd;padding:20px;margin-bottom:15px;border-radius:8px;background:#f9f9f9;';
             
+            // Show both selected and rejected status badges
             let statusBadge = '';
             if (app.status === 'selected') {
                 statusBadge = '<span style="background:#28a745;color:white;padding:5px 12px;border-radius:4px;font-size:0.85em;margin-left:10px;">✓ Selected</span>';
+            } else if (app.status === 'rejected') {
+                statusBadge = '<span style="background:#e74c3c;color:white;padding:5px 12px;border-radius:4px;font-size:0.85em;margin-left:10px;">✗ Rejected</span>';
             }
-            
+
             let html = `<div style="margin-bottom:15px;border-bottom:2px solid #e0e0e0;padding-bottom:15px;">
                     <p style="margin-bottom:8px;font-size:1.1em;"><strong>👤 Name:</strong> ${app.applicant_name} ${statusBadge}</p>
                     <p style="margin-bottom:8px;"><strong>📧 Email:</strong> ${app.applicant_email}</p>
@@ -939,7 +1032,7 @@ async function viewApplicants(jobId) {
             if (app.education) {
                 html += `<div style="margin-bottom:15px;padding:12px;background:#e8f5e9;border-radius:6px;">
                         <p style="margin-bottom:5px;font-weight:600;color:#2e7d32;">🎓 Education</p>
-                        <p style="margin-bottom:3px;"><strong>Degree:</strong> ${app.education.qualification}</p>
+                        <p style="margin-bottom:3px;"><strong>Qualification:</strong> ${app.education.qualification}</p>
                         <p style="margin-bottom:3px;"><strong>Institution:</strong> ${app.education.institution}</p>
                         <p><strong>Year:</strong> ${app.education.year}</p>
                     </div>`;
@@ -994,27 +1087,59 @@ async function viewApplicants(jobId) {
                 });
             }
             
-            if (app.status !== 'selected') {
+            // Show Select/Reject buttons only if status is pending
+            if (app.status !== 'selected' && app.status !== 'rejected') {
                 const selectBtn = document.createElement('button');
                 selectBtn.textContent = '✅ Select Applicant';
                 selectBtn.style.cssText = 'background:#28a745;color:white;padding:10px 18px;border:none;border-radius:6px;cursor:pointer;font-weight:600;flex:1;min-width:140px;';
                 selectBtn.onclick = function() { selectApplicant(app._id, app.applicant_name); };
                 btnContainer.appendChild(selectBtn);
+
+                const rejectBtn = document.createElement('button');
+                rejectBtn.textContent = '✗ Reject Applicant';
+                rejectBtn.style.cssText = 'background:#e74c3c;color:white;padding:10px 18px;border:none;border-radius:6px;cursor:pointer;font-weight:600;flex:1;min-width:140px;';
+                rejectBtn.onclick = function() { rejectApplicant(app._id, app.applicant_name, app.job_title); };
+                btnContainer.appendChild(rejectBtn);
             }
             
             div.appendChild(btnContainer);
             listDiv.appendChild(div);
         });
     } catch(e) {
-        document.getElementById('applicants-list').innerHTML = '<p style="color:red;">Error loading applicants</p>';
+        listDiv.innerHTML = '<p style="color:red;">Error loading applicants</p>';
         console.error(e);
     }
 }
 
-function closeApplicantsModal() { 
-    const m = document.getElementById('applicants-modal'); 
-    if(m) m.remove(); 
+// Reject Applicant for Jobs
+async function rejectApplicant(applicationId, applicantName, jobTitle) {
+    showCustomConfirm(`Reject ${applicantName} for this position?`, async function() {
+        try {
+            const res = await fetch(`${API_URL}/reject-applicant`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ application_id: applicationId })
+            });
+            
+            const data = await res.json();
+            
+            if (res.ok) {
+                showToast(`${applicantName} has been rejected. They will receive a notification.`, 'info');
+                closeApplicantsModal();
+            } else {
+                showCustomAlert('Error: ' + data.error, 'error');
+            }
+        } catch (e) {
+            showCustomAlert('Server error occurred', 'error');
+            console.error(e);
+        }
+    });
 }
+
+function closeApplicantsModal() { 
+    closeModalWithHistory('applicants-modal');
+}
+
 
 function viewResume(url) { 
     if(!url) { 
@@ -1176,9 +1301,6 @@ async function postInternship() {
         console.error(e);
     }
 }
-// ========================================
-// INTERNSHIP APPLICATIONS, NOTIFICATIONS
-// ========================================
 
 async function loadEmployerInternships() {
     const container = document.getElementById('my-internships-list');
@@ -1349,10 +1471,12 @@ function applyForInternship(internshipId, internshipTitle, company, stipendType)
     githubInput.placeholder = 'https://github.com/yourusername';
     githubInput.style.cssText = 'width:100%;padding:10px;margin-bottom:20px;border:2px solid #ddd;border-radius:6px;';
     form.appendChild(githubInput);
+    
     content.appendChild(form);
 
     const btnContainer = document.createElement('div');
     btnContainer.style.cssText = 'display:flex;gap:10px;margin-top:20px;';
+
     const submitBtn = document.createElement('button');
     submitBtn.textContent = 'Submit Application';
     submitBtn.style.cssText = 'flex:1;background:#28a745;color:white;border:none;padding:12px;border-radius:8px;cursor:pointer;font-weight:600;';
@@ -1362,21 +1486,29 @@ function applyForInternship(internshipId, internshipTitle, company, stipendType)
     const cancelBtn = document.createElement('button');
     cancelBtn.textContent = 'Cancel';
     cancelBtn.style.cssText = 'flex:1;background:#e74c3c;color:white;border:none;padding:12px;border-radius:8px;cursor:pointer;font-weight:600;';
-    cancelBtn.onclick = closeInternshipModal;
+    cancelBtn.onclick = function() { closeModalWithHistory('apply-internship-modal'); };
     btnContainer.appendChild(cancelBtn);
+
     content.appendChild(btnContainer);
 
     const msgDiv = document.createElement('div');
     msgDiv.id = 'apply-internship-message';
     msgDiv.style.marginTop = '15px';
     content.appendChild(msgDiv);
+    
     modal.appendChild(content);
+    isModalOpen = true;  
+    history.pushState({ section: getCurrentSection(), modal: 'apply-internship-modal' }, '', window.location.href);  
     document.body.appendChild(modal);
 }
 
 function closeInternshipModal() {
     const m = document.getElementById('apply-internship-modal'); 
-    if(m) m.remove();
+    if(m) {
+        m.remove();
+        isModalOpen = false;  
+        history.back();
+    }
 }
 
 async function submitInternshipApplication(internshipId, internshipTitle, company, stipendType) {
@@ -1427,7 +1559,11 @@ async function submitInternshipApplication(internshipId, internshipTitle, compan
         if (res.ok) {
             msgDiv.innerHTML = '<p style="color:green;">✅ Application submitted successfully!</p>';
             setTimeout(function() {
-                closeInternshipModal();
+                const modal = document.getElementById('apply-internship-modal');
+                if (modal) {
+                    modal.remove();
+                    history.back();
+                }
                 showToast('Application submitted successfully!', 'success');
             }, 1500);
         } else {
@@ -1438,6 +1574,10 @@ async function submitInternshipApplication(internshipId, internshipTitle, compan
         console.error(e);
     }
 }
+
+//=========================================
+// VIEW INTERNSHIP APPLICANTS MODAL 
+// ========================================
 
 async function viewInternshipApplicants(internshipId) {
     const modal = document.createElement('div'); 
@@ -1460,12 +1600,15 @@ async function viewInternshipApplicants(internshipId) {
     const closeBtn = document.createElement('button');
     closeBtn.textContent = 'Close';
     closeBtn.style.cssText = 'margin-top:20px;width:100%;padding:12px;background:#e74c3c;color:white;border:none;border-radius:8px;cursor:pointer;font-weight:600;';
-    closeBtn.onclick = closeInternshipApplicantsModal;
+    closeBtn.onclick = function() { closeModalWithHistory('internship-applicants-modal'); };
     content.appendChild(closeBtn);
     
     modal.appendChild(content);
+    isModalOpen = true;  
+    history.pushState({ section: getCurrentSection(), modal: 'internship-applicants-modal' }, '', window.location.href);  
     document.body.appendChild(modal);
-
+    
+    // Load applicants
     try {
         const apps = await (await fetch(`${API_URL}/internship-applications?internship_id=${internshipId}`)).json();
         if(!apps || apps.length === 0) { 
@@ -1478,9 +1621,12 @@ async function viewInternshipApplicants(internshipId) {
             const div = document.createElement('div'); 
             div.style.cssText = 'border:1px solid #ddd;padding:20px;margin-bottom:15px;border-radius:8px;background:#f9f9f9;';
             
+            // ✅ FIXED: Show both selected and rejected status badges
             let statusBadge = '';
             if (app.status === 'selected') {
                 statusBadge = '<span style="background:#28a745;color:white;padding:5px 12px;border-radius:4px;font-size:0.85em;margin-left:10px;">✓ Selected</span>';
+            } else if (app.status === 'rejected') {
+                statusBadge = '<span style="background:#e74c3c;color:white;padding:5px 12px;border-radius:4px;font-size:0.85em;margin-left:10px;">✗ Rejected</span>';
             }
             
             let html = `<div style="margin-bottom:15px;border-bottom:2px solid #e0e0e0;padding-bottom:15px;">
@@ -1523,26 +1669,85 @@ async function viewInternshipApplicants(internshipId) {
                 btnContainer.appendChild(viewResumeBtn);
             }
             
-            if (app.status !== 'selected') {
+            // ✅ FIXED: Show Select/Reject buttons only if status is pending
+            if (app.status !== 'selected' && app.status !== 'rejected') {
                 const selectBtn = document.createElement('button');
                 selectBtn.textContent = '✅ Select Applicant';
                 selectBtn.style.cssText = 'background:#28a745;color:white;padding:10px 18px;border:none;border-radius:6px;cursor:pointer;font-weight:600;flex:1;min-width:140px;';
                 selectBtn.onclick = function() { selectInternshipApplicant(app._id, app.applicant_name); };
                 btnContainer.appendChild(selectBtn);
+
+                const rejectBtn = document.createElement('button');
+                rejectBtn.textContent = '✗ Reject Applicant';
+                rejectBtn.style.cssText = 'background:#e74c3c;color:white;padding:10px 18px;border:none;border-radius:6px;cursor:pointer;font-weight:600;flex:1;min-width:140px;';
+                rejectBtn.onclick = function() { 
+                    const internshipTitle = app.internship_title || 'this internship';
+                    rejectInternshipApplicant(app._id, app.applicant_name, internshipTitle); 
+                };
+                btnContainer.appendChild(rejectBtn);
             }
             
             div.appendChild(btnContainer);
             listDiv.appendChild(div);
         });
     } catch(e) {
-        document.getElementById('internship-applicants-list').innerHTML = '<p style="color:red;">Error loading applicants</p>';
+        listDiv.innerHTML = '<p style="color:red;">Error loading applicants</p>';
         console.error(e);
     }
 }
 
 function closeInternshipApplicantsModal() {
     const m = document.getElementById('internship-applicants-modal');
-    if(m) m.remove();
+    if(m) {
+        m.remove();
+        isModalOpen = false;
+        history.back();
+    }
+}
+
+// Helper function to get current section
+function getCurrentSection() {
+    const activeSectionEl = document.querySelector('.content-section.active');
+    if (!activeSectionEl) return 'home';
+    
+    const sectionMap = {
+        'home-section': 'home',
+        'jobs-section': 'jobs',
+        'internships-section': 'internships',
+        'resume-section': 'resume',
+        'post-job-section': 'post-job',
+        'post-internship-section': 'post-internship',
+        'my-jobs-section': 'my-jobs',
+        'my-internships-section': 'my-internships',
+        'notifications-section': 'notifications',
+        'profile-section': 'profile'
+    };
+    
+    return sectionMap[activeSectionEl.id] || 'home';
+}
+
+// ========================================
+// MODAL FUNCTIONS WITH HISTORY SUPPORT
+// ========================================
+
+function openModalWithHistory(modalElement) {
+    const currentSection = getCurrentSection();
+    isModalOpen = true;
+    history.pushState({ 
+        section: currentSection, 
+        modal: modalElement.id 
+    }, '', window.location.href);
+    document.body.appendChild(modalElement);
+}
+
+function closeModalWithHistory(modalId) {
+    const modal = document.getElementById(modalId);
+    if (modal) {
+        modal.remove();
+        isModalOpen = false;
+        // Go back in history to remove the modal state
+        history.back();
+    }
 }
 
 async function selectInternshipApplicant(applicationId, applicantName) {
@@ -1569,9 +1774,35 @@ async function selectInternshipApplicant(applicationId, applicantName) {
     });
 }
 
+// NEW FUNCTION: Reject Internship Applicant
+async function rejectInternshipApplicant(applicationId, applicantName, internshipTitle) {
+    showCustomConfirm(`Reject ${applicantName} for this internship?`, async function() {
+        try {
+            const res = await fetch(`${API_URL}/reject-internship-applicant`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ application_id: applicationId })
+            });
+            
+            const data = await res.json();
+            
+            if (res.ok) {
+                showToast(`${applicantName} has been rejected. They will receive a notification.`, 'info');
+                closeInternshipApplicantsModal();
+            } else {
+                showCustomAlert('Error: ' + data.error, 'error');
+            }
+        } catch (e) {
+            showCustomAlert('Server error occurred', 'error');
+            console.error(e);
+        }
+    });
+}
+
 // ========================================
 // NOTIFICATIONS
 // ========================================
+
 async function loadNotifications() {
     const container = document.getElementById('notifications-list');
     container.innerHTML = 'Loading...';
@@ -1586,7 +1817,7 @@ async function loadNotifications() {
         let filteredNotifications;
         if (currentUser.role === 'jobseeker') {
             filteredNotifications = notifications.filter(n => 
-                ['selection', 'new_job', 'new_internship'].includes(n.type)
+                ['selection', 'rejection', 'new_job', 'new_internship'].includes(n.type)
             );
         } else {
             filteredNotifications = notifications.filter(n => 
@@ -1717,6 +1948,21 @@ function loadProfileData() {
 }
 
 // ========================================
+// MOBILE MENU (Stub functions)
+// ========================================
+function createMobileMenuToggle() {
+    // Mobile menu implementation if needed
+}
+
+function toggleMobileMenu() {
+    // Mobile menu implementation if needed
+}
+
+function closeMobileMenu() {
+    // Mobile menu implementation if needed
+}
+
+// ========================================
 // EXPORT TO WINDOW (ALL FUNCTIONS)
 // ========================================
 window.showLogin = showLogin;
@@ -1747,3 +1993,10 @@ window.deleteInternship = deleteInternship;
 window.applyForInternship = applyForInternship;
 window.closeInternshipModal = closeInternshipModal;
 window.submitInternshipApplication = submitInternshipApplication;
+window.viewInternshipApplicants = viewInternshipApplicants;
+window.closeInternshipApplicantsModal = closeInternshipApplicantsModal;
+window.selectInternshipApplicant = selectInternshipApplicant;
+window.loadNotifications = loadNotifications;
+window.deleteNotification = deleteNotification;
+window.rejectApplicant = rejectApplicant;
+window.rejectInternshipApplicant = rejectInternshipApplicant;

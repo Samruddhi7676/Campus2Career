@@ -311,10 +311,9 @@ def my_jobs():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
-
-# -------------------------
+# -------------------------------
 # GET MY INTERNSHIPS (EMPLOYER)
-# -------------------------
+# -------------------------------
 @app.route('/my-internships', methods=['GET'])
 def my_internships():
     try:
@@ -588,9 +587,9 @@ def job_applications():
         return jsonify({'error': str(e)}), 500
 
 
-# -------------------------
+# ------------------------------
 # VIEW INTERNSHIP APPLICANTS
-# -------------------------
+# ------------------------------
 
 @app.route('/internship-applications', methods=['GET'])
 def internship_applications():
@@ -619,7 +618,7 @@ def serve_application_file(filename):
 
 
 # -------------------------
-# SELECT APPLICANT
+# SELECT JOB APPLICANT
 # -------------------------
 
 @app.route('/select-applicant', methods=['POST'])
@@ -657,9 +656,9 @@ def select_applicant():
         return jsonify({'error': str(e)}), 500
 
 
-# -------------------------
+# ------------------------------
 # SELECT INTERNSHIP APPLICANT
-# -------------------------
+# ------------------------------
 
 @app.route('/select-internship-applicant', methods=['POST'])
 def select_internship_applicant():
@@ -695,7 +694,111 @@ def select_internship_applicant():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
+# -------------------------
+# REJECT JOB APPLICANT
+# -------------------------
 
+@app.route('/reject-applicant', methods=['POST'])
+def reject_applicant():
+    try:
+        data = request.json
+        application_id = data.get('application_id')
+
+        if not application_id:
+            return jsonify({'error': 'Application ID is required'}), 400
+
+        # Update application status to rejected
+        result = applications_collection.update_one(
+            {'_id': ObjectId(application_id)},
+            {'$set': {'status': 'rejected'}}
+        )
+
+        if result.modified_count == 0:
+            return jsonify({'error': 'Application not found'}), 404
+
+        # Get application details
+        application = applications_collection.find_one({'_id': ObjectId(application_id)})
+        
+        if not application:
+            return jsonify({'error': 'Application not found'}), 404
+
+        # Get job title and company from application (they're stored in the application itself)
+        job_title = application.get('job_title', 'the position')
+        company = application.get('company', 'our company')
+        applicant_email = application.get('applicant_email')
+
+        if not applicant_email:
+            return jsonify({'error': 'Applicant email not found'}), 400
+
+        # Send rejection notification to job seeker
+        notification = {
+            'message': f"Thank you for your interest in {job_title} at {company}. Unfortunately, we have decided to move forward with other candidates. We wish you the best in your job search!",
+            'recipient_email': applicant_email,
+            'type': 'rejection',
+            'created_at': datetime.now()
+        }
+
+        notifications_collection.insert_one(notification)
+
+        return jsonify({'message': 'Applicant rejected successfully'}), 200
+
+    except Exception as e:
+        print(f"Error in reject_applicant: {str(e)}")
+        return jsonify({'error': str(e)}), 500
+
+
+# ------------------------------
+# REJECT INTERNSHIP APPLICANT
+# ------------------------------
+
+@app.route('/reject-internship-applicant', methods=['POST'])
+def reject_internship_applicant():
+    try:
+        data = request.json
+        application_id = data.get('application_id')
+
+        if not application_id:
+            return jsonify({'error': 'Application ID is required'}), 400
+
+        # Update application status to rejected
+        result = internship_applications_collection.update_one(
+            {'_id': ObjectId(application_id)},
+            {'$set': {'status': 'rejected'}}
+        )
+
+        if result.modified_count == 0:
+            return jsonify({'error': 'Application not found'}), 404
+
+        # Get application details
+        application = internship_applications_collection.find_one({'_id': ObjectId(application_id)})
+        
+        if not application:
+            return jsonify({'error': 'Application not found'}), 404
+
+        # Get internship title and company from application (they're stored in the application itself)
+        internship_title = application.get('internship_title', 'the internship')
+        company = application.get('company', 'our company')
+        applicant_email = application.get('applicant_email')
+
+        if not applicant_email:
+            return jsonify({'error': 'Applicant email not found'}), 400
+
+        # Send rejection notification to job seeker
+        notification = {
+            'message': f"Thank you for your interest in {internship_title} at {company}. Unfortunately, we have decided to move forward with other candidates. We encourage you to apply for future opportunities!",
+            'recipient_email': applicant_email,
+            'type': 'rejection',
+            'created_at': datetime.now()
+        }
+
+        notifications_collection.insert_one(notification)
+
+        return jsonify({'message': 'Applicant rejected successfully'}), 200
+
+    except Exception as e:
+        print(f"Error in reject_internship_applicant: {str(e)}")
+        return jsonify({'error': str(e)}), 500
+    
 # -------------------------
 # GET NOTIFICATIONS 
 # -------------------------
