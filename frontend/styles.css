@@ -29,6 +29,24 @@ body {
     display: block;
 }
 
+/* Forgot password page - full screen with purple background */
+#forgot-password-page.active {
+    display: flex;
+    min-height: 100vh;
+    background: linear-gradient(135deg, #6b5b95, #8775ad, #a38fc5);
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+}
+
+#forgot-password-page .auth-wrapper {
+    background: none;
+    min-height: unset;
+    padding: 0;
+    width: 100%;
+    max-width: 480px;
+}
+
 .auth-container {
     max-width: 450px;
     width: 100%;

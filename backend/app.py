@@ -3,9 +3,60 @@ from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
 from database import users_collection, jobs_collection, notifications_collection, applications_collection, internships_collection, internship_applications_collection
 from resume_reviewer import review_resume_file
-from datetime import datetime
+from datetime import datetime, timedelta
 from bson.objectid import ObjectId
 import os
+import random
+import string
+import smtplib
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
+
+# -------------------------
+# EMAIL CONFIGURATION
+# -------------------------
+# Reads sender credentials from a .env file in the same folder.
+# Create a file called  .env  next to app.py with these two lines:
+#
+#   MAIL_SENDER=your_gmail@gmail.com
+#   MAIL_PASSWORD=your_gmail_app_password
+#
+# HOW TO GET A GMAIL APP PASSWORD (required):
+#   1. Go to myaccount.google.com > Security
+#   2. Turn ON 2-Step Verification
+#   3. Then go to Security > App passwords
+#   4. Create one for "Mail" and paste it as MAIL_PASSWORD
+#
+# The OTP will be sent to WHATEVER email the user registers with.
+# Only MAIL_SENDER/MAIL_PASSWORD identify WHO sends it.
+# -------------------------
+
+import os as _os
+
+def _load_env(path='.env'):
+    """Simple .env loader — no extra packages needed."""
+    env = {}
+    try:
+        with open(path) as f:
+            for line in f:
+                line = line.strip()
+                if line and not line.startswith('#') and '=' in line:
+                    key, _, val = line.partition('=')
+                    env[key.strip()] = val.strip().strip('"').strip("'")
+    except FileNotFoundError:
+        pass
+    return env
+
+_env = _load_env(_os.path.join(_os.path.dirname(_os.path.abspath(__file__)), '.env'))
+
+EMAIL_SENDER   = "campus2career.portal@gmail.com"
+EMAIL_PASSWORD = "qwgdngdpaomfefei"
+
+print(f"📧 Email config loaded — SENDER: '{EMAIL_SENDER}' | PASSWORD: '{'SET' if EMAIL_PASSWORD else 'NOT SET'}'")
+
+
+# In-memory OTP store: { email: { otp: str, expires_at: datetime, verified: bool } }
+otp_store = {}
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 FRONTEND_DIR = os.path.join(BASE_DIR, '..', 'frontend')
@@ -828,6 +879,216 @@ def get_notifications():
 
 
 # -------------------------
+# FORGOT PASSWORD - STEP 1: Send confirmation email (Is that you?)
+# -------------------------
+
+def send_email(to_email, subject, html_body):
+    """Send an email using Gmail SMTP. Credentials come from .env file."""
+    print(f"📧 Attempting to send email to: {to_email}")
+    print(f"📧 MAIL_SENDER loaded: '{EMAIL_SENDER}'")
+    print(f"📧 MAIL_PASSWORD loaded: '{'*' * len(EMAIL_PASSWORD) if EMAIL_PASSWORD else 'EMPTY'}'")
+
+    if not EMAIL_SENDER or not EMAIL_PASSWORD:
+        print("❌ Email not configured. Create a .env file with MAIL_SENDER and MAIL_PASSWORD.")
+        return False
+    try:
+        msg = MIMEMultipart('alternative')
+        msg['Subject'] = subject
+        msg['From'] = EMAIL_SENDER
+        msg['To'] = to_email
+        part = MIMEText(html_body, 'html')
+        msg.attach(part)
+
+        with smtplib.SMTP_SSL('smtp.gmail.com', 465) as server:
+            server.login(EMAIL_SENDER, EMAIL_PASSWORD)
+            server.sendmail(EMAIL_SENDER, to_email, msg.as_string())
+        print(f"✅ Email sent successfully to {to_email}")
+        return True
+    except Exception as e:
+        print(f"❌ Email send error: {e}")
+        return False
+
+
+@app.route('/forgot-password/request', methods=['POST'])
+def forgot_password_request():
+    """Step 1 - Check if email exists and send confirmation email"""
+    try:
+        data = request.json
+        email = data.get('email', '').strip().lower()
+
+        if not email:
+            return jsonify({'error': 'Email is required'}), 400
+
+        user = users_collection.find_one({'email': email})
+        if not user:
+            # Generic message so we don't reveal which emails exist
+            return jsonify({'message': 'If this email is registered, you will receive a confirmation email shortly.'}), 200
+
+        # Generate a short token to identify the confirmation link
+        token = ''.join(random.choices(string.ascii_letters + string.digits, k=32))
+        expires_at = datetime.now() + timedelta(minutes=15)
+
+        otp_store[email] = {
+            'confirm_token': token,
+            'expires_at': expires_at,
+            'confirmed': False,
+            'otp': None,
+            'otp_verified': False
+        }
+
+        # Build confirmation email with Yes/No buttons (links)
+        # Get the server's host dynamically so links work on any device on the network
+        server_host = request.host  # e.g. 192.168.1.5:5000 or localhost:5000
+        confirm_url = f"http://{server_host}/forgot-password/confirm?email={email}&token={token}&action=yes"
+        deny_url = f"http://{server_host}/forgot-password/confirm?email={email}&token={token}&action=no"
+
+        html_body = f"""
+        <div style="font-family: Arial, sans-serif; max-width: 500px; margin: 0 auto; padding: 30px; background: #f9f9f9; border-radius: 10px;">
+            <h2 style="color: #6b5b95; text-align: center;">Campus2Career - Password Reset Request</h2>
+            <p style="color: #555; font-size: 16px;">Hi <strong>{user['name']}</strong>,</p>
+            <p style="color: #555; font-size: 16px;">We received a request to reset the password for your account associated with <strong>{email}</strong>.</p>
+            <p style="color: #555; font-size: 18px; font-weight: bold;">Is that you trying to reset your password?</p>
+            <div style="text-align: center; margin: 30px 0;">
+                <a href="{confirm_url}" style="background: #28a745; color: white; padding: 14px 35px; border-radius: 8px; text-decoration: none; font-size: 16px; font-weight: bold; margin-right: 15px;">✅ Yes, it's me</a>
+                <a href="{deny_url}" style="background: #e74c3c; color: white; padding: 14px 35px; border-radius: 8px; text-decoration: none; font-size: 16px; font-weight: bold;">❌ No, it wasn't me</a>
+            </div>
+            <p style="color: #999; font-size: 13px; text-align: center;">This link expires in 15 minutes. If you did not request this, please ignore this email.</p>
+        </div>
+        """
+
+        email_sent = send_email(email, "Campus2Career - Password Reset Confirmation", html_body)
+
+        if not email_sent:
+            return jsonify({'error': 'Failed to send email. Please check server email configuration.'}), 500
+
+        return jsonify({'message': 'If this email is registered, you will receive a confirmation email shortly.'}), 200
+
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/forgot-password/confirm', methods=['GET'])
+def forgot_password_confirm():
+    """Step 2 - User clicked Yes/No in email. Send OTP if Yes."""
+    try:
+        email = request.args.get('email', '').strip().lower()
+        token = request.args.get('token', '')
+        action = request.args.get('action', '')
+
+        record = otp_store.get(email)
+
+        if not record:
+            return """<html><body style="font-family:Arial;text-align:center;padding:50px;">
+                <h2 style="color:#e74c3c;">❌ Invalid or expired link.</h2>
+                <p>Please request a new password reset from the app.</p></body></html>"""
+
+        if record['confirm_token'] != token:
+            return """<html><body style="font-family:Arial;text-align:center;padding:50px;">
+                <h2 style="color:#e74c3c;">❌ Invalid token.</h2></body></html>"""
+
+        if datetime.now() > record['expires_at']:
+            otp_store.pop(email, None)
+            return """<html><body style="font-family:Arial;text-align:center;padding:50px;">
+                <h2 style="color:#e74c3c;">⏰ This link has expired.</h2>
+                <p>Please request a new password reset from the app.</p></body></html>"""
+
+        if action == 'no':
+            otp_store.pop(email, None)
+            return """<html><body style="font-family:Arial;text-align:center;padding:50px;">
+                <h2 style="color:#6b5b95;">🔒 Your account is safe!</h2>
+                <p>No changes were made to your account. If you have concerns, please contact support.</p></body></html>"""
+
+        if action == 'yes':
+            # Generate 6-digit OTP
+            otp = ''.join(random.choices(string.digits, k=6))
+            otp_expires = datetime.now() + timedelta(minutes=10)
+
+            record['confirmed'] = True
+            record['otp'] = otp
+            record['otp_expires_at'] = otp_expires
+            record['otp_verified'] = False
+            otp_store[email] = record
+
+            # Send OTP via email (simulating SMS via email)
+            user = users_collection.find_one({'email': email})
+            html_body = f"""
+            <div style="font-family: Arial, sans-serif; max-width: 450px; margin: 0 auto; padding: 30px; background: #f9f9f9; border-radius: 10px;">
+                <h2 style="color: #6b5b95; text-align: center;">Your OTP Code</h2>
+                <p style="color: #555;">Hi <strong>{user['name'] if user else email}</strong>, here is your one-time password:</p>
+                <div style="text-align: center; margin: 25px 0;">
+                    <span style="font-size: 42px; font-weight: bold; letter-spacing: 10px; color: #6b5b95; background: #f0ecf9; padding: 15px 25px; border-radius: 10px; display: inline-block;">{otp}</span>
+                </div>
+                <p style="color: #777; font-size: 13px; text-align: center;">This OTP expires in <strong>10 minutes</strong>. Do not share it with anyone.</p>
+                <p style="color: #999; font-size: 12px; text-align: center;">Go back to the Campus2Career app and enter this OTP to reset your password.</p>
+            </div>
+            """
+            send_email(email, "Campus2Career - Your OTP Code", html_body)
+
+            return """<html><body style="font-family:Arial;text-align:center;padding:50px;background:#f9f9f9;">
+                <div style="max-width:450px;margin:0 auto;background:white;padding:40px;border-radius:12px;box-shadow:0 4px 20px rgba(0,0,0,0.1);">
+                    <h2 style="color:#6b5b95;">✅ Identity Confirmed!</h2>
+                    <p style="color:#555;font-size:16px;">An OTP has been sent to your email address.</p>
+                    <p style="color:#555;font-size:16px;">Please go back to the <strong>Campus2Career app</strong> and enter your OTP to reset your password.</p>
+                    <p style="color:#999;font-size:13px;">The OTP expires in 10 minutes.</p>
+                </div></body></html>"""
+
+        return """<html><body style="font-family:Arial;text-align:center;padding:50px;">
+            <h2 style="color:#e74c3c;">❌ Invalid action.</h2></body></html>"""
+
+    except Exception as e:
+        return f"""<html><body style="font-family:Arial;text-align:center;padding:50px;">
+            <h2 style="color:#e74c3c;">❌ Error: {str(e)}</h2></body></html>"""
+
+
+@app.route('/forgot-password/reset', methods=['POST'])
+def forgot_password_reset():
+    """Step 3 - Verify OTP and update password"""
+    try:
+        data = request.json
+        email = data.get('email', '').strip().lower()
+        otp = data.get('otp', '').strip()
+        new_password = data.get('new_password', '')
+
+        if not email or not otp or not new_password:
+            return jsonify({'error': 'Email, OTP, and new password are required'}), 400
+
+        if len(new_password) < 6:
+            return jsonify({'error': 'Password must be at least 6 characters'}), 400
+
+        record = otp_store.get(email)
+
+        if not record:
+            return jsonify({'error': 'No password reset request found. Please start over.'}), 400
+
+        if not record.get('confirmed'):
+            return jsonify({'error': 'Please confirm your identity via email first.'}), 400
+
+        if datetime.now() > record.get('otp_expires_at', datetime.min):
+            otp_store.pop(email, None)
+            return jsonify({'error': 'OTP has expired. Please request a new password reset.'}), 400
+
+        if record.get('otp') != otp:
+            return jsonify({'error': 'Invalid OTP. Please check and try again.'}), 400
+
+        # OTP is correct — update password
+        result = users_collection.update_one(
+            {'email': email},
+            {'$set': {'password': new_password}}
+        )
+
+        if result.matched_count == 0:
+            return jsonify({'error': 'User not found'}), 404
+
+        # Clean up OTP store
+        otp_store.pop(email, None)
+
+        return jsonify({'message': 'Password updated successfully! You can now log in.'}), 200
+
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+# -------------------------
 # HEALTH CHECK
 # -------------------------
 
@@ -842,7 +1103,8 @@ def health():
 
 if __name__ == '__main__':
     print("🚀 Server running at http://localhost:5000")
+    print("📱 On same WiFi? Use your laptop IP e.g. http://192.168.x.x:5000")
     print("📁 Frontend:", FRONTEND_DIR)
     print("📁 Uploads:", UPLOAD_FOLDER)
     print("📁 Applications:", APPLICATIONS_FOLDER)
-    app.run(debug=True, port=5000, use_reloader=False)
+    app.run(debug=True, host='0.0.0.0', port=5000, use_reloader=False)

@@ -1706,26 +1706,6 @@ function closeInternshipApplicantsModal() {
 }
 
 // Helper function to get current section
-function getCurrentSection() {
-    const activeSectionEl = document.querySelector('.content-section.active');
-    if (!activeSectionEl) return 'home';
-    
-    const sectionMap = {
-        'home-section': 'home',
-        'jobs-section': 'jobs',
-        'internships-section': 'internships',
-        'resume-section': 'resume',
-        'post-job-section': 'post-job',
-        'post-internship-section': 'post-internship',
-        'my-jobs-section': 'my-jobs',
-        'my-internships-section': 'my-internships',
-        'notifications-section': 'notifications',
-        'profile-section': 'profile'
-    };
-    
-    return sectionMap[activeSectionEl.id] || 'home';
-}
-
 // ========================================
 // MODAL FUNCTIONS WITH HISTORY SUPPORT
 // ========================================
@@ -1963,6 +1943,129 @@ function closeMobileMenu() {
 }
 
 // ========================================
+// FORGOT PASSWORD FLOW
+// ========================================
+
+function showForgotPassword() {
+    document.getElementById('auth-page').classList.remove('active');
+    document.getElementById('forgot-password-page').classList.add('active');
+    // Reset all fields
+    document.getElementById('fp-email').value = '';
+    document.getElementById('fp-otp').value = '';
+    document.getElementById('fp-new-password').value = '';
+    document.getElementById('fp-confirm-password').value = '';
+    document.getElementById('fp-step1-message').innerHTML = '';
+    document.getElementById('fp-step2-message').innerHTML = '';
+    document.getElementById('fp-step1').style.display = 'block';
+    document.getElementById('fp-step2').style.display = 'none';
+    const btn = document.getElementById('fp-send-btn');
+    if (btn) btn.disabled = false;
+}
+
+function backToLogin() {
+    document.getElementById('forgot-password-page').classList.remove('active');
+    document.getElementById('auth-page').classList.add('active');
+    showLogin();
+}
+
+async function forgotPasswordRequest(isResend) {
+    const email = document.getElementById('fp-email').value.trim();
+    const msgDiv = document.getElementById('fp-step1-message');
+
+    if (!email) {
+        msgDiv.innerHTML = '<span style="color:#e74c3c;">⚠️ Please enter your email address.</span>';
+        return;
+    }
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+        msgDiv.innerHTML = '<span style="color:#e74c3c;">⚠️ Please enter a valid email address (e.g. name@example.com)</span>';
+        return;
+    }
+
+    const btn = document.getElementById('fp-send-btn');
+    if (btn) btn.disabled = true;
+    msgDiv.innerHTML = '<span style="color:#8775ad;">📧 Sending confirmation email...</span>';
+
+    try {
+        const response = await fetch(API_URL + '/forgot-password/request', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email: email })
+        });
+        const data = await response.json();
+
+        if (response.ok) {
+            msgDiv.innerHTML = '';
+            document.getElementById('fp-step1').style.display = 'none';
+            document.getElementById('fp-step2').style.display = 'block';
+            if (isResend) {
+                document.getElementById('fp-step2-message').innerHTML = '<span style="color:#28a745;">✅ Resent! Check your email.</span>';
+                setTimeout(function() { document.getElementById('fp-step2-message').innerHTML = ''; }, 3000);
+            }
+        } else {
+            msgDiv.innerHTML = '<span style="color:#e74c3c;">⚠️ ' + (data.error || 'Something went wrong. Please try again.') + '</span>';
+        }
+    } catch (error) {
+        msgDiv.innerHTML = '<span style="color:#e74c3c;">⚠️ Server error! Make sure backend is running.</span>';
+        console.error(error);
+    }
+    if (btn) btn.disabled = false;
+}
+
+async function forgotPasswordReset() {
+    const email = document.getElementById('fp-email').value.trim();
+    const otp = document.getElementById('fp-otp').value.trim();
+    const newPassword = document.getElementById('fp-new-password').value;
+    const confirmPassword = document.getElementById('fp-confirm-password').value;
+    const msgDiv = document.getElementById('fp-step2-message');
+
+    if (!otp) {
+        msgDiv.innerHTML = '<span style="color:#e74c3c;">⚠️ Please enter the OTP sent to your email.</span>';
+        return;
+    }
+    if (otp.length !== 6 || !/^\d{6}$/.test(otp)) {
+        msgDiv.innerHTML = '<span style="color:#e74c3c;">⚠️ OTP must be exactly 6 digits.</span>';
+        return;
+    }
+    if (!newPassword) {
+        msgDiv.innerHTML = '<span style="color:#e74c3c;">⚠️ Please enter a new password.</span>';
+        return;
+    }
+    if (newPassword.length < 6) {
+        msgDiv.innerHTML = '<span style="color:#e74c3c;">⚠️ Password must be at least 6 characters.</span>';
+        return;
+    }
+    if (newPassword !== confirmPassword) {
+        msgDiv.innerHTML = '<span style="color:#e74c3c;">⚠️ Passwords do not match!</span>';
+        return;
+    }
+
+    msgDiv.innerHTML = '<span style="color:#8775ad;">🔄 Verifying OTP and updating password...</span>';
+
+    try {
+        const response = await fetch(API_URL + '/forgot-password/reset', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email: email, otp: otp, new_password: newPassword })
+        });
+        const data = await response.json();
+
+        if (response.ok) {
+            msgDiv.innerHTML = '<span style="color:#28a745;">✅ Password updated successfully!</span>';
+            setTimeout(function() {
+                backToLogin();
+                showCustomAlert('🎉 Password reset successful! Please log in with your new password.', 'success');
+            }, 1500);
+        } else {
+            msgDiv.innerHTML = '<span style="color:#e74c3c;">⚠️ ' + data.error + '</span>';
+        }
+    } catch (error) {
+        msgDiv.innerHTML = '<span style="color:#e74c3c;">⚠️ Server error! Please try again.</span>';
+        console.error(error);
+    }
+}
+
+// ========================================
 // EXPORT TO WINDOW (ALL FUNCTIONS)
 // ========================================
 window.showLogin = showLogin;
@@ -2000,3 +2103,7 @@ window.loadNotifications = loadNotifications;
 window.deleteNotification = deleteNotification;
 window.rejectApplicant = rejectApplicant;
 window.rejectInternshipApplicant = rejectInternshipApplicant;
+window.showForgotPassword = showForgotPassword;
+window.backToLogin = backToLogin;
+window.forgotPasswordRequest = forgotPasswordRequest;
+window.forgotPasswordReset = forgotPasswordReset;
