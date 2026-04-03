@@ -922,16 +922,20 @@ def forgot_password_request():
         if not user:
             return jsonify({'message': 'If this email is registered, you will receive an OTP shortly.'}), 200
 
-        # Generate confirmation token
+        # Generate confirmation token - stored in MongoDB so it survives server restarts
         confirm_token = ''.join(random.choices(string.ascii_letters + string.digits, k=32))
         token_expires = datetime.now() + timedelta(minutes=15)
 
-        otp_store[email] = {
-            'confirm_token': confirm_token,
-            'expires_at': token_expires,
-            'confirmed': False,
-            'otp_verified': False
-        }
+        users_collection.update_one(
+            {'email': email},
+            {'$set': {
+                'reset_confirm_token': confirm_token,
+                'reset_expires_at': token_expires,
+                'reset_confirmed': False,
+                'reset_otp': None,
+                'reset_otp_expires_at': None
+            }}
+        )
 
         confirm_url_yes = f"https://campus2career-n7tv.onrender.com/forgot-password/confirm?email={email}&token={confirm_token}&action=yes"
         confirm_url_no  = f"https://campus2career-n7tv.onrender.com/forgot-password/confirm?email={email}&token={confirm_token}&action=no"
@@ -968,25 +972,25 @@ def forgot_password_confirm():
         token = request.args.get('token', '')
         action = request.args.get('action', '')
 
-        record = otp_store.get(email)
+        user = users_collection.find_one({'email': email})
 
-        if not record:
+        if not user or not user.get('reset_confirm_token'):
             return """<html><body style="font-family:Arial;text-align:center;padding:50px;">
                 <h2 style="color:#e74c3c;">❌ Invalid or expired link.</h2>
                 <p>Please request a new password reset from the app.</p></body></html>"""
 
-        if record['confirm_token'] != token:
+        if user['reset_confirm_token'] != token:
             return """<html><body style="font-family:Arial;text-align:center;padding:50px;">
                 <h2 style="color:#e74c3c;">❌ Invalid token.</h2></body></html>"""
 
-        if datetime.now() > record['expires_at']:
-            otp_store.pop(email, None)
+        if datetime.now() > user['reset_expires_at']:
+            users_collection.update_one({'email': email}, {'$unset': {'reset_confirm_token': '', 'reset_expires_at': '', 'reset_confirmed': '', 'reset_otp': '', 'reset_otp_expires_at': ''}})
             return """<html><body style="font-family:Arial;text-align:center;padding:50px;">
                 <h2 style="color:#e74c3c;">⏰ This link has expired.</h2>
                 <p>Please request a new password reset from the app.</p></body></html>"""
 
         if action == 'no':
-            otp_store.pop(email, None)
+            users_collection.update_one({'email': email}, {'$unset': {'reset_confirm_token': '', 'reset_expires_at': '', 'reset_confirmed': '', 'reset_otp': '', 'reset_otp_expires_at': ''}})
             return """<html><body style="font-family:Arial;text-align:center;padding:50px;">
                 <h2 style="color:#6b5b95;">🔒 Your account is safe!</h2>
                 <p>No changes were made to your account. If you have concerns, please contact support.</p></body></html>"""
@@ -996,14 +1000,14 @@ def forgot_password_confirm():
             otp = ''.join(random.choices(string.digits, k=6))
             otp_expires = datetime.now() + timedelta(minutes=10)
 
-            record['confirmed'] = True
-            record['otp'] = otp
-            record['otp_expires_at'] = otp_expires
-            record['otp_verified'] = False
-            otp_store[email] = record
-
-            # Send OTP via email (simulating SMS via email)
-            user = users_collection.find_one({'email': email})
+            users_collection.update_one(
+                {'email': email},
+                {'$set': {
+                    'reset_confirmed': True,
+                    'reset_otp': otp,
+                    'reset_otp_expires_at': otp_expires
+                }}
+            )
             html_body = f"""
             <div style="font-family: Arial, sans-serif; max-width: 450px; margin: 0 auto; padding: 30px; background: #f9f9f9; border-radius: 10px;">
                 <h2 style="color: #6b5b95; text-align: center;">Your OTP Code</h2>
@@ -1048,32 +1052,32 @@ def forgot_password_reset():
         if len(new_password) < 6:
             return jsonify({'error': 'Password must be at least 6 characters'}), 400
 
-        record = otp_store.get(email)
+        user = users_collection.find_one({'email': email})
 
-        if not record:
+        if not user or not user.get('reset_confirm_token'):
             return jsonify({'error': 'No password reset request found. Please start over.'}), 400
 
-        if not record.get('confirmed'):
+        if not user.get('reset_confirmed'):
             return jsonify({'error': 'Please confirm your identity via email first.'}), 400
 
-        if datetime.now() > record.get('otp_expires_at', datetime.min):
-            otp_store.pop(email, None)
+        if datetime.now() > user.get('reset_otp_expires_at', datetime.min):
+            users_collection.update_one({'email': email}, {'$unset': {'reset_confirm_token': '', 'reset_expires_at': '', 'reset_confirmed': '', 'reset_otp': '', 'reset_otp_expires_at': ''}})
             return jsonify({'error': 'OTP has expired. Please request a new password reset.'}), 400
 
-        if record.get('otp') != otp:
+        if user.get('reset_otp') != otp:
             return jsonify({'error': 'Invalid OTP. Please check and try again.'}), 400
 
-        # OTP is correct — update password
+        # OTP is correct — update password and clean up reset fields
         result = users_collection.update_one(
             {'email': email},
-            {'$set': {'password': new_password}}
+            {
+                '$set': {'password': new_password},
+                '$unset': {'reset_confirm_token': '', 'reset_expires_at': '', 'reset_confirmed': '', 'reset_otp': '', 'reset_otp_expires_at': ''}
+            }
         )
 
         if result.matched_count == 0:
             return jsonify({'error': 'User not found'}), 404
-
-        # Clean up OTP store
-        otp_store.pop(email, None)
 
         return jsonify({'message': 'Password updated successfully! You can now log in.'}), 200
 
