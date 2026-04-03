@@ -2,7 +2,7 @@
 // CONFIG & AUTH FUNCTIONS
 // ========================================
 
-const API_URL = 'http://localhost:5000';
+const API_URL = "https://campus2career-n7tv.onrender.com"
 let currentUser = null;
 console.log('Script loaded successfully');
 
@@ -13,20 +13,7 @@ console.log('Script loaded successfully');
 let originalShowSection = null;
 let isModalOpen = false;  // ADD THIS NEW VARIABLE
 
-window.addEventListener('DOMContentLoaded', function() {
-    originalShowSection = window.showSection;
-    
-    window.showSection = function(section) {
-        originalShowSection(section);
-        
-        // MODIFIED: Only push state if no modal is open
-        if (!isModalOpen) {
-            history.pushState({ section: section, modal: null }, '', '#' + section);
-        }
-    };
-    
-    history.replaceState({ section: 'home', modal: null }, '', '#home');
-});
+// Browser history setup runs after all functions are defined (see bottom of file)
 
 // MODIFIED: Simplified back button handler
 window.addEventListener('popstate', function(event) {
@@ -187,11 +174,28 @@ window.customToast = showToast;
 // CHECK FOR SAVED SESSION ON PAGE LOAD
 // ========================================
 window.addEventListener('DOMContentLoaded', function() {
+    // Set up browser history now that all functions are defined
+    originalShowSection = showSection;
+
+    window.showSection = function(section) {
+        originalShowSection(section);
+        if (!isModalOpen) {
+            history.pushState({ section: section, modal: null }, '', '#' + section);
+        }
+    };
+
+    history.replaceState({ section: 'home', modal: null }, '', '#home');
+
+    // Restore saved session
     const savedUser = localStorage.getItem('currentUser');
     if (savedUser) {
-        currentUser = JSON.parse(savedUser);
-        showDashboard();
-        showSection('home');
+        try {
+            currentUser = JSON.parse(savedUser);
+            showDashboard();
+            showSection('home');
+        } catch (e) {
+            localStorage.removeItem('currentUser');
+        }
     }
 });
 
@@ -222,21 +226,29 @@ async function signup() {
     const password = document.getElementById('signup-password').value;
     const role = document.getElementById('signup-role').value;
     const msgDiv = document.getElementById('signup-message');
+    const btn = document.querySelector('#signup-form button');
 
     if (!name || !email || !password || !role) {
-        msgDiv.innerHTML = 'Please fill all fields!';
+        msgDiv.innerHTML = '<span style="color:#e74c3c;">⚠️ Please fill all fields!</span>';
         return;
     }
 
+    if (btn) { btn.disabled = true; btn.textContent = '⏳ Creating account...'; }
+    msgDiv.innerHTML = '<span style="color:#8775ad;">Connecting to server...</span>';
+
     try {
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 35000);
         const response = await fetch(`${API_URL}/signup`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ name, email, password, role })
+            body: JSON.stringify({ name, email, password, role }),
+            signal: controller.signal
         });
+        clearTimeout(timeout);
         const data = await response.json();
         if (response.ok) {
-            msgDiv.innerHTML = 'Account created! Logging you in...';
+            msgDiv.innerHTML = '<span style="color:#28a745;">✅ Account created! Logging you in...</span>';
             setTimeout(() => {
                 currentUser = { name, email, role };
                 localStorage.setItem('currentUser', JSON.stringify(currentUser));
@@ -244,11 +256,17 @@ async function signup() {
                 showSection('home');
             }, 1000);
         } else {
-            msgDiv.innerHTML = data.error;
+            msgDiv.innerHTML = '<span style="color:#e74c3c;">❌ ' + (data.error || 'Signup failed. Try again.') + '</span>';
         }
     } catch (error) {
-        msgDiv.innerHTML = 'Server error! Make sure backend is running';
+        if (error.name === 'AbortError') {
+            msgDiv.innerHTML = '<span style="color:#e74c3c;">⏰ Server is waking up, please try again in a moment.</span>';
+        } else {
+            msgDiv.innerHTML = '<span style="color:#e74c3c;">❌ Cannot reach server. Check your connection.</span>';
+        }
         console.error(error);
+    } finally {
+        if (btn) { btn.disabled = false; btn.textContent = '🔄 Create Account'; }
     }
 }
 
@@ -256,18 +274,26 @@ async function login() {
     const email = document.getElementById('login-email').value.trim();
     const password = document.getElementById('login-password').value;
     const msgDiv = document.getElementById('login-message');
+    const btn = document.querySelector('#login-form button');
 
     if (!email || !password) {
-        msgDiv.innerHTML = 'Please fill all fields!';
+        msgDiv.innerHTML = '<span style="color:#e74c3c;">⚠️ Please fill all fields!</span>';
         return;
     }
 
+    if (btn) { btn.disabled = true; btn.textContent = '⏳ Logging in...'; }
+    msgDiv.innerHTML = '<span style="color:#8775ad;">Connecting to server...</span>';
+
     try {
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 35000);
         const response = await fetch(`${API_URL}/login`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ email, password })
+            body: JSON.stringify({ email, password }),
+            signal: controller.signal
         });
+        clearTimeout(timeout);
         const data = await response.json();
         if (response.ok) {
             currentUser = {
@@ -279,11 +305,17 @@ async function login() {
             showDashboard();
             showSection('home');
         } else {
-            msgDiv.innerHTML = 'Invalid credentials!';
+            msgDiv.innerHTML = '<span style="color:#e74c3c;">❌ ' + (data.error || 'Invalid credentials!') + '</span>';
         }
     } catch (error) {
-        msgDiv.innerHTML = 'Server error!';
+        if (error.name === 'AbortError') {
+            msgDiv.innerHTML = '<span style="color:#e74c3c;">⏰ Server is waking up, please try again in a moment.</span>';
+        } else {
+            msgDiv.innerHTML = '<span style="color:#e74c3c;">❌ Cannot reach server. Check your connection.</span>';
+        }
         console.error(error);
+    } finally {
+        if (btn) { btn.disabled = false; btn.textContent = '🔐 Login'; }
     }
 }
 
@@ -2073,7 +2105,7 @@ window.showSignup = showSignup;
 window.signup = signup;
 window.login = login;
 window.logout = logout;
-window.showSection = showSection;
+// window.showSection is set up in DOMContentLoaded with history support
 window.postJob = postJob;
 window.searchJobs = searchJobs;
 window.reviewResume = reviewResume;

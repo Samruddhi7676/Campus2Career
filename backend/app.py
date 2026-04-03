@@ -9,6 +9,8 @@ import os
 import random
 import string
 import smtplib
+import threading
+import urllib.request
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 
@@ -49,10 +51,11 @@ def _load_env(path='.env'):
 
 _env = _load_env(_os.path.join(_os.path.dirname(_os.path.abspath(__file__)), '.env'))
 
-EMAIL_SENDER   = "campus2career.portal@gmail.com"
-EMAIL_PASSWORD = "qwgdngdpaomfefei"
+MAIL_SENDER   = _env.get('MAIL_SENDER',   os.environ.get('MAIL_SENDER', ''))
+MAIL_PASSWORD = _env.get('MAIL_PASSWORD', os.environ.get('MAIL_PASSWORD', ''))
+print(f"📧 Email config — sender: {MAIL_SENDER or 'NOT SET'}")
 
-print(f"📧 Email config loaded — SENDER: '{EMAIL_SENDER}' | PASSWORD: '{'SET' if EMAIL_PASSWORD else 'NOT SET'}'")
+
 
 
 # In-memory OTP store: { email: { otp: str, expires_at: datetime, verified: bool } }
@@ -883,35 +886,31 @@ def get_notifications():
 # -------------------------
 
 def send_email(to_email, subject, html_body):
-    """Send an email using Gmail SMTP. Credentials come from .env file."""
+    """Send email via Gmail SMTP."""
     print(f"📧 Attempting to send email to: {to_email}")
-    print(f"📧 MAIL_SENDER loaded: '{EMAIL_SENDER}'")
-    print(f"📧 MAIL_PASSWORD loaded: '{'*' * len(EMAIL_PASSWORD) if EMAIL_PASSWORD else 'EMPTY'}'")
-
-    if not EMAIL_SENDER or not EMAIL_PASSWORD:
-        print("❌ Email not configured. Create a .env file with MAIL_SENDER and MAIL_PASSWORD.")
+    if not MAIL_SENDER or not MAIL_PASSWORD:
+        print("❌ MAIL_SENDER or MAIL_PASSWORD not configured.")
         return False
     try:
         msg = MIMEMultipart('alternative')
         msg['Subject'] = subject
-        msg['From'] = EMAIL_SENDER
-        msg['To'] = to_email
-        part = MIMEText(html_body, 'html')
-        msg.attach(part)
+        msg['From']    = MAIL_SENDER
+        msg['To']      = to_email
+        msg.attach(MIMEText(html_body, 'html'))
 
         with smtplib.SMTP_SSL('smtp.gmail.com', 465) as server:
-            server.login(EMAIL_SENDER, EMAIL_PASSWORD)
-            server.sendmail(EMAIL_SENDER, to_email, msg.as_string())
-        print(f"✅ Email sent successfully to {to_email}")
+            server.login(MAIL_SENDER, MAIL_PASSWORD)
+            server.sendmail(MAIL_SENDER, to_email, msg.as_string())
+
+        print(f"✅ Email sent to {to_email}")
         return True
     except Exception as e:
-        print(f"❌ Email send error: {e}")
+        print(f"❌ Email send error: {type(e).__name__}: {e}")
         return False
 
 
 @app.route('/forgot-password/request', methods=['POST'])
 def forgot_password_request():
-    """Step 1 - Check if email exists and send confirmation email"""
     try:
         data = request.json
         email = data.get('email', '').strip().lower()
@@ -921,47 +920,41 @@ def forgot_password_request():
 
         user = users_collection.find_one({'email': email})
         if not user:
-            # Generic message so we don't reveal which emails exist
-            return jsonify({'message': 'If this email is registered, you will receive a confirmation email shortly.'}), 200
+            return jsonify({'message': 'If this email is registered, you will receive an OTP shortly.'}), 200
 
-        # Generate a short token to identify the confirmation link
-        token = ''.join(random.choices(string.ascii_letters + string.digits, k=32))
-        expires_at = datetime.now() + timedelta(minutes=15)
+        # Generate confirmation token
+        confirm_token = '''.join(random.choices(string.ascii_letters + string.digits, k=32))
+        token_expires = datetime.now() + timedelta(minutes=15)
 
         otp_store[email] = {
-            'confirm_token': token,
-            'expires_at': expires_at,
+            'confirm_token': confirm_token,
+            'expires_at': token_expires,
             'confirmed': False,
-            'otp': None,
             'otp_verified': False
         }
 
-        # Build confirmation email with Yes/No buttons (links)
-        # Get the server's host dynamically so links work on any device on the network
-        server_host = request.host  # e.g. 192.168.1.5:5000 or localhost:5000
-        confirm_url = f"http://{server_host}/forgot-password/confirm?email={email}&token={token}&action=yes"
-        deny_url = f"http://{server_host}/forgot-password/confirm?email={email}&token={token}&action=no"
+        confirm_url_yes = f"https://campus2career-n7tv.onrender.com/forgot-password/confirm?email={email}&token={confirm_token}&action=yes"
+        confirm_url_no  = f"https://campus2career-n7tv.onrender.com/forgot-password/confirm?email={email}&token={confirm_token}&action=no"
 
         html_body = f"""
         <div style="font-family: Arial, sans-serif; max-width: 500px; margin: 0 auto; padding: 30px; background: #f9f9f9; border-radius: 10px;">
             <h2 style="color: #6b5b95; text-align: center;">Campus2Career - Password Reset Request</h2>
             <p style="color: #555; font-size: 16px;">Hi <strong>{user['name']}</strong>,</p>
-            <p style="color: #555; font-size: 16px;">We received a request to reset the password for your account associated with <strong>{email}</strong>.</p>
-            <p style="color: #555; font-size: 18px; font-weight: bold;">Is that you trying to reset your password?</p>
-            <div style="text-align: center; margin: 30px 0;">
-                <a href="{confirm_url}" style="background: #28a745; color: white; padding: 14px 35px; border-radius: 8px; text-decoration: none; font-size: 16px; font-weight: bold; margin-right: 15px;">✅ Yes, it's me</a>
-                <a href="{deny_url}" style="background: #e74c3c; color: white; padding: 14px 35px; border-radius: 8px; text-decoration: none; font-size: 16px; font-weight: bold;">❌ No, it wasn't me</a>
+            <p style="color: #555; font-size: 16px;">We received a request to reset your password. Was this you?</p>
+            <div style="text-align: center; margin: 30px 0; display: flex; gap: 15px; justify-content: center;">
+                <a href="{confirm_url_yes}" style="background: #6b5b95; color: white; padding: 14px 35px; border-radius: 8px; font-size: 16px; font-weight: bold; text-decoration: none;">✅ Yes, it's me</a>
+                <a href="{confirm_url_no}" style="background: #e74c3c; color: white; padding: 14px 35px; border-radius: 8px; font-size: 16px; font-weight: bold; text-decoration: none;">❌ No, it wasn't me</a>
             </div>
-            <p style="color: #999; font-size: 13px; text-align: center;">This link expires in 15 minutes. If you did not request this, please ignore this email.</p>
+            <p style="color: #999; font-size: 13px; text-align: center;">This link expires in 15 minutes.</p>
         </div>
         """
 
-        email_sent = send_email(email, "Campus2Career - Password Reset Confirmation", html_body)
+        email_sent = send_email(email, "Campus2Career - Password Reset Request", html_body)
 
         if not email_sent:
             return jsonify({'error': 'Failed to send email. Please check server email configuration.'}), 500
 
-        return jsonify({'message': 'If this email is registered, you will receive a confirmation email shortly.'}), 200
+        return jsonify({'message': 'Confirmation email sent! Click Yes, it's me in the email, then check your inbox for the OTP.'}), 200
 
     except Exception as e:
         return jsonify({'error': str(e)}), 500
@@ -1100,6 +1093,19 @@ def health():
 # -------------------------
 # RUN SERVER
 # -------------------------
+
+# Keep Render free tier awake by pinging every 10 minutes
+def keep_alive():
+    import time
+    while True:
+        time.sleep(600)  # 10 minutes
+        try:
+            urllib.request.urlopen("https://campus2career-n7tv.onrender.com/")
+            print("🏓 Keep-alive ping sent")
+        except Exception as e:
+            print(f"Keep-alive ping failed: {e}")
+
+threading.Thread(target=keep_alive, daemon=True).start()
 
 if __name__ == '__main__':
     print("🚀 Server running at http://localhost:5000")
