@@ -1,9 +1,8 @@
+import os
 from pymongo import MongoClient
 
 try:
-    client = MongoClient(
-        "mongodb+srv://samruddhi:UserPassword@campus2career.zbhnq2s.mongodb.net/Campus2Career?retryWrites=true&w=majority&appName=Campus2Career"
-    )
+    client = MongoClient(os.environ.get("MONGO_URI", ""))
 
     db = client["Campus2Career"]
 
