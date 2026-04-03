@@ -11,6 +11,7 @@ import string
 import smtplib
 import threading
 import urllib.request
+from urllib.parse import quote
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 
@@ -937,8 +938,9 @@ def forgot_password_request():
             }}
         )
 
-        confirm_url_yes = f"https://campus2career-n7tv.onrender.com/forgot-password/confirm?email={email}&token={confirm_token}&action=yes"
-        confirm_url_no  = f"https://campus2career-n7tv.onrender.com/forgot-password/confirm?email={email}&token={confirm_token}&action=no"
+        encoded_email = quote(email, safe="")
+        confirm_url_yes = f"https://campus2career-n7tv.onrender.com/forgot-password/confirm?email={encoded_email}&token={confirm_token}&action=yes"
+        confirm_url_no  = f"https://campus2career-n7tv.onrender.com/forgot-password/confirm?email={encoded_email}&token={confirm_token}&action=no"
 
         html_body = f"""
         <div style="font-family: Arial, sans-serif; max-width: 500px; margin: 0 auto; padding: 30px; background: #f9f9f9; border-radius: 10px;">
@@ -972,7 +974,9 @@ def forgot_password_confirm():
         token = request.args.get('token', '')
         action = request.args.get('action', '')
 
+        print(f"DEBUG confirm - email: {email}, token: {token}, action: {action}")
         user = users_collection.find_one({'email': email})
+        print(f"DEBUG confirm - user found: {user is not None}, stored token: {user.get('reset_confirm_token') if user else 'N/A'}")
 
         if not user or not user.get('reset_confirm_token'):
             return """<html><body style="font-family:Arial;text-align:center;padding:50px;">
@@ -980,8 +984,10 @@ def forgot_password_confirm():
                 <p>Please request a new password reset from the app.</p></body></html>"""
 
         if user['reset_confirm_token'] != token:
-            return """<html><body style="font-family:Arial;text-align:center;padding:50px;">
-                <h2 style="color:#e74c3c;">❌ Invalid token.</h2></body></html>"""
+            return f"""<html><body style="font-family:Arial;text-align:center;padding:50px;">
+                <h2 style="color:#e74c3c;">❌ Invalid token.</h2>
+                <p>Expected: {user['reset_confirm_token'][:10]}... Got: {token[:10]}...</p>
+                </body></html>"""
 
         if datetime.now() > user['reset_expires_at']:
             users_collection.update_one({'email': email}, {'$unset': {'reset_confirm_token': '', 'reset_expires_at': '', 'reset_confirmed': '', 'reset_otp': '', 'reset_otp_expires_at': ''}})
