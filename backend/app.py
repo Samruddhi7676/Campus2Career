@@ -927,6 +927,7 @@ def forgot_password_request():
         confirm_token = ''.join(random.choices(string.ascii_letters + string.digits, k=32))
         token_expires = datetime.now() + timedelta(minutes=15)
 
+        # Always overwrite with fresh token (invalidates any previous link)
         users_collection.update_one(
             {'email': email},
             {'$set': {
@@ -984,10 +985,12 @@ def forgot_password_confirm():
                 <p>Please request a new password reset from the app.</p></body></html>"""
 
         if user['reset_confirm_token'] != token:
-            return f"""<html><body style="font-family:Arial;text-align:center;padding:50px;">
-                <h2 style="color:#e74c3c;">❌ Invalid token.</h2>
-                <p>Expected: {user['reset_confirm_token'][:10]}... Got: {token[:10]}...</p>
-                </body></html>"""
+            return """<html><body style="font-family:Arial;text-align:center;padding:50px;font-family:Arial;">
+                <div style="max-width:450px;margin:0 auto;background:white;padding:40px;border-radius:12px;box-shadow:0 4px 20px rgba(0,0,0,0.1);margin-top:50px;">
+                <h2 style="color:#e74c3c;">❌ Link Expired</h2>
+                <p style="color:#555;font-size:16px;">This link is no longer valid. You may have requested a newer reset email — please use the <strong>latest email</strong> you received.</p>
+                <p style="color:#999;font-size:13px;">Go back to the app and request a new password reset if needed.</p>
+                </div></body></html>"""
 
         if datetime.now() > user['reset_expires_at']:
             users_collection.update_one({'email': email}, {'$unset': {'reset_confirm_token': '', 'reset_expires_at': '', 'reset_confirmed': '', 'reset_otp': '', 'reset_otp_expires_at': ''}})
