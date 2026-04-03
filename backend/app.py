@@ -923,7 +923,7 @@ def forgot_password_request():
             return jsonify({'message': 'If this email is registered, you will receive an OTP shortly.'}), 200
 
         # Generate confirmation token
-        confirm_token = '''.join(random.choices(string.ascii_letters + string.digits, k=32))
+        confirm_token = ''.join(random.choices(string.ascii_letters + string.digits, k=32))
         token_expires = datetime.now() + timedelta(minutes=15)
 
         otp_store[email] = {
@@ -954,7 +954,7 @@ def forgot_password_request():
         if not email_sent:
             return jsonify({'error': 'Failed to send email. Please check server email configuration.'}), 500
 
-        return jsonify({'message': 'Confirmation email sent! Click Yes, it's me in the email, then check your inbox for the OTP.'}), 200
+        return jsonify({'message': "Confirmation email sent! Click 'Yes, it's me' in the email, then check your inbox for the OTP."}), 200
 
     except Exception as e:
         return jsonify({'error': str(e)}), 500
