@@ -1061,7 +1061,9 @@ def forgot_password_reset():
         if len(new_password) < 6:
             return jsonify({'error': 'Password must be at least 6 characters'}), 400
 
+        print(f"DEBUG reset - email: '{email}', otp: '{otp}'")
         user = users_collection.find_one({'email': email})
+        print(f"DEBUG reset - user found: {user is not None}, reset_confirmed: {user.get('reset_confirmed') if user else 'N/A'}")
 
         if not user or not user.get('reset_confirm_token'):
             return jsonify({'error': 'No password reset request found. Please start over.'}), 400
@@ -1073,7 +1075,10 @@ def forgot_password_reset():
             users_collection.update_one({'email': email}, {'$unset': {'reset_confirm_token': '', 'reset_expires_at': '', 'reset_confirmed': '', 'reset_otp': '', 'reset_otp_expires_at': ''}})
             return jsonify({'error': 'OTP has expired. Please request a new password reset.'}), 400
 
-        if user.get('reset_otp') != otp:
+        stored_otp = str(user.get('reset_otp', '')).strip()
+        entered_otp = str(otp).strip()
+        print(f"DEBUG OTP - stored: '{stored_otp}', entered: '{entered_otp}', email: '{email}'")
+        if stored_otp != entered_otp:
             return jsonify({'error': 'Invalid OTP. Please check and try again.'}), 400
 
         # OTP is correct — update password and clean up reset fields
