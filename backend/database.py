@@ -1,9 +1,15 @@
 import os
 from pymongo import MongoClient
+from dotenv import load_dotenv
+
+load_dotenv()  # loads from .env file automatically
 
 try:
-    client = MongoClient(os.environ.get("MONGO_URI", ""))
-
+    mongo_uri = os.environ.get("MONGO_URI", "")
+    if not mongo_uri:
+        raise ValueError("MONGO_URI is not set! Check your .env file.")
+    
+    client = MongoClient(mongo_uri)
     db = client["Campus2Career"]
 
     users_collection = db["users"]
