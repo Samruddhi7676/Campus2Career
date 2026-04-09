@@ -1,14 +1,13 @@
 # main.py - Backend
+import sys
+import os
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
-try:
-    from backend.database import users_collection, jobs_collection, notifications_collection, applications_collection, internships_collection, internship_applications_collection
-except ModuleNotFoundError:
-    from database import users_collection, jobs_collection, notifications_collection, applications_collection, internships_collection, internship_applications_collection
+from database import users_collection, jobs_collection, notifications_collection, applications_collection, internships_collection, internship_applications_collection
 from resume_reviewer import review_resume_file
 from datetime import datetime, timedelta
 from bson.objectid import ObjectId
-import os
 import random
 import string
 import smtplib
