@@ -91,7 +91,14 @@ def serve_frontend():
 
 @app.route('/<path:path>')
 def serve_static(path):
-    return send_from_directory(app.static_folder, path)
+    # Don't intercept /applications/ — those are handled by serve_application_file
+    if path.startswith('applications/'):
+        return jsonify({'error': 'Not found'}), 404
+    # Don't intercept API routes — only serve actual static frontend files
+    file_path = os.path.join(app.static_folder, path)
+    if os.path.isfile(file_path):
+        return send_from_directory(app.static_folder, path)
+    return jsonify({'error': 'Not found'}), 404
 
 
 # -------------------------
@@ -452,7 +459,8 @@ def apply_job():
             return jsonify({'error': 'Only PDF files allowed for resume'}), 400
 
         # Store resume as base64 in MongoDB instead of disk
-        resume_filename = f"resume_{applicant_email}_{job_id}.pdf"
+        safe_email = applicant_email.replace('@', '_at_').replace('.', '_')
+        resume_filename = f"resume_{safe_email}_{job_id}.pdf"
         resume_data = base64.b64encode(resume_file.read()).decode('utf-8')
 
         # Store certifications as base64 in MongoDB
@@ -462,7 +470,7 @@ def apply_job():
                 if cert_file and cert_file.filename:
                     cert_ext = cert_file.filename.rsplit('.', 1)[1].lower()
                     if cert_ext in ['pdf', 'doc', 'docx']:
-                        cert_filename = f"cert_{applicant_email}_{job_id}_{i+1}.{cert_ext}"
+                        cert_filename = f"cert_{safe_email}_{job_id}_{i+1}.{cert_ext}"
                         cert_data = base64.b64encode(cert_file.read()).decode('utf-8')
                         certs_data.append({'filename': cert_filename, 'data': cert_data, 'ext': cert_ext})
 
@@ -544,7 +552,8 @@ def apply_internship():
             return jsonify({'error': 'Only PDF files allowed for resume'}), 400
 
         # Store resume as base64 in MongoDB instead of disk
-        resume_filename = f"internship_resume_{applicant_email}_{internship_id}.pdf"
+        safe_email = applicant_email.replace('@', '_at_').replace('.', '_')
+        resume_filename = f"internship_resume_{safe_email}_{internship_id}.pdf"
         resume_data = base64.b64encode(resume_file.read()).decode('utf-8')
 
         application = {
@@ -594,9 +603,9 @@ def job_applications():
         for a in apps:
             a['_id'] = str(a['_id'])
             a['applied_at'] = str(a['applied_at'])
-            a['resume_url'] = f"/applications/{a['resume_path']}"
+            a['resume_url'] = f"https://campus2career-n7tv.onrender.com/applications/{a['resume_path']}"
             a['resume_data'] = None  # don't send raw base64 in list view
-            a['certifications_urls'] = [f"/applications/{fn}" for fn in a.get('certifications_paths', [])]
+            a['certifications_urls'] = [f"https://campus2career-n7tv.onrender.com/applications/{fn}" for fn in a.get('certifications_paths', [])]
             a['certifications_data'] = None  # don't send raw base64 in list view
 
         return jsonify(apps), 200
@@ -617,7 +626,7 @@ def internship_applications():
         for a in apps:
             a['_id'] = str(a['_id'])
             a['applied_at'] = str(a['applied_at'])
-            a['resume_url'] = f"/applications/{a['resume_path']}" if a.get('resume_path') else None
+            a['resume_url'] = f"https://campus2career-n7tv.onrender.com/applications/{a['resume_path']}" if a.get('resume_path') else None
             a['resume_data'] = None  # don't send raw base64 in list view
 
         return jsonify(apps), 200
@@ -888,7 +897,9 @@ def send_email(to_email, subject, html_body):
         msg['To']      = to_email
         msg.attach(MIMEText(html_body, 'html'))
 
-        with smtplib.SMTP_SSL('smtp.gmail.com', 465) as server:
+        with smtplib.SMTP('smtp.gmail.com', 587) as server:
+            server.ehlo()
+            server.starttls()
             server.login(MAIL_SENDER, MAIL_PASSWORD)
             server.sendmail(MAIL_SENDER, to_email, msg.as_string())
 
