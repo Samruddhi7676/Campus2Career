@@ -897,7 +897,7 @@ def send_email(to_email, subject, html_body):
         msg['To']      = to_email
         msg.attach(MIMEText(html_body, 'html'))
 
-        with smtplib.SMTP('smtp.gmail.com', 587) as server:
+        with smtplib.SMTP('smtp-relay.brevo.com', 587) as server:
             server.ehlo()
             server.starttls()
             server.login(MAIL_SENDER, MAIL_PASSWORD)
