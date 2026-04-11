@@ -17,9 +17,9 @@ from urllib.parse import quote
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 
-# -------------------------
+# ------------------------
 # EMAIL CONFIGURATION
-# -------------------------
+# ------------------------
 # Reads sender credentials from a .env file in the same folder.
 # Create a file called  .env  next to app.py with these two lines:
 #
