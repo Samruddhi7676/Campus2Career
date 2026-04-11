@@ -956,10 +956,11 @@ def forgot_password_request():
         </div>
         """
 
-        email_sent = send_email(email, "Campus2Career - Password Reset Request", html_body)
-
-        if not email_sent:
-            return jsonify({'error': 'Failed to send email. Please check server email configuration.'}), 500
+        threading.Thread(
+            target=send_email,
+            args=(email, "Campus2Career - Password Reset Request", html_body),
+            daemon=True
+        ).start()
 
         return jsonify({'message': "Confirmation email sent! Click 'Yes, it's me' in the email, then check your inbox for the OTP."}), 200
 
@@ -1028,7 +1029,7 @@ def forgot_password_confirm():
                 <p style="color: #999; font-size: 12px; text-align: center;">Go back to the Campus2Career app and enter this OTP to reset your password.</p>
             </div>
             """
-            send_email(email, "Campus2Career - Your OTP Code", html_body)
+            threading.Thread(target=send_email, args=(email, "Campus2Career - Your OTP Code", html_body), daemon=True).start()
 
             return """<html><body style="font-family:Arial;text-align:center;padding:50px;background:#f9f9f9;">
                 <div style="max-width:450px;margin:0 auto;background:white;padding:40px;border-radius:12px;box-shadow:0 4px 20px rgba(0,0,0,0.1);">
