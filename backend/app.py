@@ -58,9 +58,6 @@ MAIL_SENDER   = _env.get('MAIL_SENDER',   os.environ.get('MAIL_SENDER', ''))
 MAIL_PASSWORD = _env.get('MAIL_PASSWORD', os.environ.get('MAIL_PASSWORD', ''))
 print(f"📧 Email config — sender: {MAIL_SENDER or 'NOT SET'}")
 
-
-
-
 # In-memory OTP store: { email: { otp: str, expires_at: datetime, verified: bool } }
 otp_store = {}
 
@@ -893,7 +890,7 @@ def send_email(to_email, subject, html_body):
     try:
         msg = MIMEMultipart('alternative')
         msg['Subject'] = subject
-        msg['From']    = MAIL_SENDER
+        msg['From'] = f"Campus2Career <campus2career.students@gmail.com>"
         msg['To']      = to_email
         msg.attach(MIMEText(html_body, 'html'))
 
