@@ -246,7 +246,9 @@ async function signup() {
             signal: controller.signal
         });
         clearTimeout(timeout);
-        const data = await response.json();
+        const text = await response.text();
+        let data;
+        try { data = JSON.parse(text); } catch { data = { error: text }; }
         if (response.ok) {
             msgDiv.innerHTML = '<span style="color:#28a745;">✅ Account created! Logging you in...</span>';
             setTimeout(() => {
