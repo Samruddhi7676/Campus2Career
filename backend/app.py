@@ -885,7 +885,7 @@ def get_notifications():
 # -------------------------
 
 def send_email(to_email, subject, html_body):
-    """Send email via Gmail SMTP."""
+    """Send email via Brevo SMTP."""
     print(f"📧 Attempting to send email to: {to_email}")
     if not MAIL_SENDER or not MAIL_PASSWORD:
         print("❌ MAIL_SENDER or MAIL_PASSWORD not configured.")
