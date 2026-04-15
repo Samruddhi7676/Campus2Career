@@ -17,9 +17,9 @@ from urllib.parse import quote
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 
-# ------------------------
+# -------------------------
 # EMAIL CONFIGURATION
-# ------------------------
+# -------------------------
 # Reads sender credentials from a .env file in the same folder.
 # Create a file called  .env  next to app.py with these two lines:
 #
@@ -55,8 +55,8 @@ def _load_env(path='.env'):
 _env = _load_env(_os.path.join(_os.path.dirname(_os.path.abspath(__file__)), '.env'))
 
 MAIL_SENDER   = _env.get('MAIL_SENDER',   os.environ.get('MAIL_SENDER', ''))
-MAIL_PASSWORD = _env.get('MAIL_PASSWORD', os.environ.get('MAIL_PASSWORD', ''))
-print(f"📧 Email config — sender: {MAIL_SENDER or 'NOT SET'}")
+BREVO_API_KEY = _env.get('BREVO_API_KEY', os.environ.get('BREVO_API_KEY', ''))
+print(f"📧 Email config — sender: {MAIL_SENDER or 'NOT SET'}, api_key_set: {bool(BREVO_API_KEY)}")
 
 # In-memory OTP store: { email: { otp: str, expires_at: datetime, verified: bool } }
 otp_store = {}
@@ -882,26 +882,34 @@ def get_notifications():
 # -------------------------
 
 def send_email(to_email, subject, html_body):
-    """Send email via Brevo SMTP."""
+    """Send email via Brevo HTTP API (avoids SMTP port blocks on Render)."""
     print(f"📧 Attempting to send email to: {to_email}")
-    if not MAIL_SENDER or not MAIL_PASSWORD:
-        print("❌ MAIL_SENDER or MAIL_PASSWORD not configured.")
+    if not MAIL_SENDER or not BREVO_API_KEY:
+        print("❌ MAIL_SENDER or BREVO_API_KEY not configured.")
         return False
     try:
-        msg = MIMEMultipart('alternative')
-        msg['Subject'] = subject
-        msg['From'] = f"Campus2Career <campus2career.students@gmail.com>"
-        msg['To']      = to_email
-        msg.attach(MIMEText(html_body, 'html'))
+        import json as _json
+        payload = _json.dumps({
+            "sender": {"name": "Campus2Career", "email": MAIL_SENDER},
+            "to": [{"email": to_email}],
+            "subject": subject,
+            "htmlContent": html_body
+        }).encode('utf-8')
 
-        with smtplib.SMTP('smtp-relay.brevo.com', 587) as server:
-            server.ehlo()
-            server.starttls()
-            server.login(MAIL_SENDER, MAIL_PASSWORD)
-            server.sendmail(MAIL_SENDER, to_email, msg.as_string())
+        req = urllib.request.Request(
+            "https://api.brevo.com/v3/smtp/email",
+            data=payload,
+            headers={
+                "Content-Type": "application/json",
+                "api-key": BREVO_API_KEY
+            },
+            method="POST"
+        )
 
-        print(f"✅ Email sent to {to_email}")
-        return True
+        with urllib.request.urlopen(req, timeout=15) as response:
+            print(f"✅ Email sent to {to_email} — status: {response.status}")
+            return True
+
     except Exception as e:
         print(f"❌ Email send error: {type(e).__name__}: {e}")
         return False
